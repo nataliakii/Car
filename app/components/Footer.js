@@ -92,7 +92,6 @@ function Footer() {
     const destinationURL = `https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lon}`;
     router.push(destinationURL);
   };
-
   return (
     <Section>
       <FooterContainer>
