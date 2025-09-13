@@ -32,7 +32,6 @@ export default function BigCalendar({ cars }) {
   const { enqueueSnackbar } = useSnackbar();
   const { ordersByCarId, fetchAndUpdateOrders, allOrders, updateCarInContext } =
     useMainContext();
-
   const getOrderNumber = (order) => {
     if (!order) return "Не указан";
     console.log("Full order object:", order);
