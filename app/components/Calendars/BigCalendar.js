@@ -585,14 +585,14 @@ export default function BigCalendar({ cars }) {
                   sx={{
                     position: "sticky",
                     left: 0,
-                    backgroundColor: "secondary.dark",
-                    color: "text.light",
+                    backgroundColor: "primary.main1",
+                    color: "#fff",
                     zIndex: 3,
                     padding: 0,
                     minWidth: 120,
                     cursor: "pointer",
                     "&:hover": {
-                      backgroundColor: "secondary.main",
+                      backgroundColor: "primary.main",
                     },
                   }}
                 >
