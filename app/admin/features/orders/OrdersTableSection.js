@@ -52,6 +52,7 @@ import {
   isClientOrder,
 } from "@/domain/orders";
 import { getOrderAccess } from "@/domain/orders/orderAccessPolicy";
+import { getOrderNumberOfDaysOrZero } from "@/domain/orders/numberOfDays";
 import { getTimeBucket } from "@/domain/time/athensTime";
 import { updateOrderInline, updateOrderConfirmation, fetchAdminOrders, calculateTotalPrice } from "@/utils/action";
 import { useSession } from "next-auth/react";
@@ -600,10 +601,10 @@ export default function OrdersTableSection() {
       
       // Get dates (format as YYYY-MM-DD for API)
       const rentalStartDate = order.rentalStartDate 
-        ? dayjs(order.rentalStartDate).format("YYYY-MM-DD")
+        ? dayjs.utc(order.rentalStartDate).tz(ATHENS_TZ).format("YYYY-MM-DD")
         : null;
       const rentalEndDate = order.rentalEndDate
-        ? dayjs(order.rentalEndDate).format("YYYY-MM-DD")
+        ? dayjs.utc(order.rentalEndDate).tz(ATHENS_TZ).format("YYYY-MM-DD")
         : null;
       
       if (!rentalStartDate || !rentalEndDate) {
@@ -1362,7 +1363,7 @@ export default function OrdersTableSection() {
                             </Tooltip>
                           </Stack>
                           <Typography variant="caption" color="text.secondary">
-                            {order.numberOfDays || 0} {t("table.days")}
+                            {getOrderNumberOfDaysOrZero(order)} {t("table.days")}
                           </Typography>
                         </Stack>
                       </TableCell>

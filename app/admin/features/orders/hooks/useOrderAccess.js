@@ -121,14 +121,19 @@ export function useOrderAccess(order, options = {}) {
     
     // Получаем доступы
     const access = getOrderAccess(ctx);
+    // Attach timeBucket so UI can distinguish CURRENT vs FUTURE without re-deriving date logic.
+    const accessWithBucket = {
+      ...access,
+      timeBucket: ctx.timeBucket,
+    };
     
     // Применяем forceViewOnly если нужно, НО SUPERADMIN всегда имеет полный доступ
     // WHY: forceViewOnly передаётся из UI для прошлых заказов, но policy для SUPERADMIN
     // уже вернул полный доступ — не переопределяем его.
     const isSuperAdminAccess = ctx.role === "SUPERADMIN";
-    if (forceViewOnly && access.canEdit && !isSuperAdminAccess) {
+    if (forceViewOnly && accessWithBucket.canEdit && !isSuperAdminAccess) {
       return {
-        ...access,
+        ...accessWithBucket,
         canEdit: false,
         canEditPickupDate: false,
         canEditReturnDate: false,
@@ -142,16 +147,8 @@ export function useOrderAccess(order, options = {}) {
       };
     }
     
-    return access;
-  }, [
-    order?._id,
-    order?.my_order,
-    order?.confirmed,
-    order?.rentalStartDate,
-    order?.rentalEndDate,
-    session?.user?.role,
-    forceViewOnly,
-  ]);
+    return accessWithBucket;
+  }, [order, session, forceViewOnly]);
 }
 
 // ════════════════════════════════════════════════════════════════

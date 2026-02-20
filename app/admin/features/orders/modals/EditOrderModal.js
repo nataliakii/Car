@@ -753,13 +753,13 @@ const EditOrderModal = ({
                   type="date"
                   value={editedOrder?.rentalStartDate ? formatDateYYYYMMDD(editedOrder.rentalStartDate) : ""}
                   onChange={(e) => {
-                    if (permissions.viewOnly || (!isSuperAdmin(currentUser) && permissions.isCurrentOrder) || !permissions.fieldPermissions.rentalStartDate) return;
+                    if (permissions.viewOnly || permissions.isCurrentOrder || !permissions.fieldPermissions.rentalStartDate) return;
                     updateStartDate(e.target.value);
                   }}
                   sx={{ flex: 1, minHeight: 48 }}
                   size="medium"
                   InputProps={{ style: { minHeight: 48 } }}
-                  disabled={permissions.viewOnly || !permissions.fieldPermissions.rentalStartDate}
+                  disabled={permissions.viewOnly || permissions.isCurrentOrder || !permissions.fieldPermissions.rentalStartDate}
                   inputProps={{ min: todayStr }}
                 />
                 <TextField

@@ -45,6 +45,7 @@ import {
   athensNow,
 } from "@/domain/time/athensTime";
 import { updateOrder, calculateTotalPrice, deleteOrder } from "@utils/action";
+import { canUpdateStartDate } from "./startDateAccess";
 
 /**
  * Hook for managing order edit state and price calculation
@@ -496,9 +497,10 @@ export function useEditOrderState({
   /**
    * Update start date (Athens timezone)
    * 🔧 FIX ДЫРКА B: DatePicker парсит как Athens дату
+   * Access is enforced by fieldPermissions.rentalStartDate (SSOT from orderAccessPolicy)
    */
   const updateStartDate = useCallback((dateStr) => {
-    if (permissions.viewOnly || permissions.isCurrentOrder) return;
+    if (!canUpdateStartDate(permissions)) return;
     
     // Create Athens date from YYYY-MM-DD string
     const newStartDate = athensStartOfDay(dateStr);
@@ -523,7 +525,7 @@ export function useEditOrderState({
     
     setIsManualTotalPrice(false);
     isFirstOpen.current = false;
-  }, [permissions.viewOnly, permissions.isCurrentOrder]);
+  }, [permissions]);
 
   /**
    * Update end date (Athens timezone)
@@ -561,7 +563,6 @@ export function useEditOrderState({
   /**
    * Update start time (Athens timezone)
    * 🔧 FIX ДЫРКА C: TimePicker даёт dayjs в локальной TZ, переинтерпретируем как Athens
-   * 🔧 FIX: Removed isCurrentOrder check - permissions are checked via fieldPermissions in UI
    */
   const updateStartTime = useCallback((localDayjs) => {
     if (permissions.viewOnly) return;
@@ -993,4 +994,3 @@ export function useEditOrderState({
 }
 
 export default useEditOrderState;
-

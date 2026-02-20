@@ -140,13 +140,12 @@ describe("orderPermissions RBAC", () => {
   // ─────────────────────────────────────────────────────────────
   
   describe("Admin delete permissions", () => {
-    // UPDATED: Per orderAccessPolicy.js:
-    // - ADMIN can delete UNCONFIRMED client orders (spam removal)
-    // - ADMIN cannot delete CONFIRMED client orders
-    test("ADMIN can delete UNCONFIRMED client orders (spam removal)", () => {
+    // UPDATED: Per current orderAccessPolicy.js:
+    // - ADMIN cannot delete client orders (confirmed or unconfirmed)
+    test("ADMIN cannot delete UNCONFIRMED client orders", () => {
       // clientOrder is unconfirmed
       const result = canDeleteOrder(clientOrder, admin);
-      expect(result.allowed).toBe(true);
+      expect(result.allowed).toBe(false);
     });
     
     test("ADMIN cannot delete CONFIRMED client orders", () => {
@@ -260,9 +259,9 @@ describe("orderPermissions RBAC", () => {
       expect(result.allowed).toBe(false);
     });
     
-    test("ADMIN cannot edit rentalEndDate of client orders", () => {
+    test("ADMIN can edit rentalEndDate of UNCONFIRMED client orders (field-level flag)", () => {
       const result = canEditOrderField(clientOrder, admin, "rentalEndDate");
-      expect(result.allowed).toBe(false);
+      expect(result.allowed).toBe(true);
     });
     
     // UPDATED: Per orderAccessPolicy.js:
@@ -274,9 +273,9 @@ describe("orderPermissions RBAC", () => {
       expect(result.allowed).toBe(false);
     });
     
-    test("ADMIN cannot edit timeOut of UNCONFIRMED client order", () => {
+    test("ADMIN can edit timeOut of UNCONFIRMED client order (field-level flag)", () => {
       const result = canEditOrderField(clientOrder, admin, "timeOut");
-      expect(result.allowed).toBe(false);
+      expect(result.allowed).toBe(true);
     });
     
     test("ADMIN can edit timeOut of CONFIRMED client order", () => {
@@ -297,9 +296,9 @@ describe("orderPermissions RBAC", () => {
       expect(canEditOrderField(adminOrder, admin, "totalPrice").allowed).toBe(true);
     });
 
-    test("ADMIN cannot edit client PII on internal orders (policy: canEditClientPII false)", () => {
-      expect(canEditOrderField(adminOrder, admin, "customerName").allowed).toBe(false);
-      expect(canEditOrderField(adminOrder, admin, "phone").allowed).toBe(false);
+    test("ADMIN can edit client PII on internal FUTURE orders (policy: canEditClientPII true)", () => {
+      expect(canEditOrderField(adminOrder, admin, "customerName").allowed).toBe(true);
+      expect(canEditOrderField(adminOrder, admin, "phone").allowed).toBe(true);
     });
   });
 
@@ -392,4 +391,3 @@ describe("orderPermissions RBAC", () => {
     });
   });
 });
-

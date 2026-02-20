@@ -161,6 +161,7 @@ describe("🔐 analyzeConfirmationConflicts", () => {
       const result = analyzeConfirmationConflicts({
         orderToConfirm,
         allOrders: [orderToConfirm, confirmedOrder],
+        bufferHours: BUFFER_HOURS,
       });
 
       expect(result.canConfirm).toBe(false);
@@ -195,11 +196,12 @@ describe("🔐 analyzeConfirmationConflicts", () => {
       const result = analyzeConfirmationConflicts({
         orderToConfirm,
         allOrders: [orderToConfirm, confirmedOrder],
+        bufferHours: BUFFER_HOURS,
       });
 
       expect(result.canConfirm).toBe(false);
       expect(result.level).toBe("block");
-      expect(result.message).toContain("Измените время");
+      expect(result.message).toContain("Изменить буфер");
     });
 
     it("возвращает affectedPendingOrders даже при BLOCK", () => {
@@ -352,13 +354,14 @@ describe("🔐 analyzeConfirmationConflicts", () => {
       const result = analyzeConfirmationConflicts({
         orderToConfirm,
         allOrders: [orderToConfirm, confirmedOrder],
+        bufferHours: BUFFER_HOURS,
       });
 
       // 2 часа разницы = ровно буфер, НО пересечение по буферу
       // 12:00 + 2h buffer = 14:00, поэтому это граница
       // В зависимости от реализации это может быть OK или BLOCK
       // Проверяем что время правильно парсится
-      expect(result.bufferHours).toBe(2);
+      expect(result.bufferHours).toBe(BUFFER_HOURS);
     });
   });
 });
@@ -521,9 +524,9 @@ describe("📐 Граничные случаи", () => {
     const result = analyzeConfirmationConflicts({
       orderToConfirm: order,
       allOrders: [order],
+      bufferHours: BUFFER_HOURS,
     });
 
     expect(result.bufferHours).toBe(BUFFER_HOURS);
   });
 });
-

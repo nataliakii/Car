@@ -35,6 +35,7 @@ const DEFAULT_ACCESS = {
   canEditClientPII: false,
   isViewOnly: true,
   isPast: true,
+  timeBucket: "PAST",
 };
 
 /**
@@ -93,10 +94,10 @@ export function useEditOrderPermissions(order, currentUser, isViewOnly = false, 
       canDelete: a.canDelete,
       canConfirm: a.canConfirm,
       viewOnly: a.isViewOnly,
-      isCurrentOrder: !a.isPast,
-      isCompletedOrder: a.isPast,
+      isCurrentOrder: a.timeBucket === "CURRENT",
+      isCompletedOrder: a.timeBucket === "PAST",
     }),
-    [fieldPermissions, a.canEdit, a.canDelete, a.canConfirm, a.isViewOnly, a.isPast]
+    [fieldPermissions, a.canEdit, a.canDelete, a.canConfirm, a.isViewOnly, a.timeBucket]
   );
 }
 

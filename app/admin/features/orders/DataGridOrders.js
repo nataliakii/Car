@@ -4,6 +4,15 @@ import { DataGrid } from "@mui/x-data-grid";
 import { Box, Typography, Stack } from "@mui/material";
 import { ActionButton } from "@/app/components/ui";
 import { useTranslation } from "react-i18next";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+import { mapOrderToOrdersDataGridRow } from "@/app/admin/features/shared/orderRows";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const BUSINESS_TZ = "Europe/Athens";
 
 // Функция для вычисления ширины столбца по максимальной длине данных
 function getMaxColumnWidth(rows, field, headerName) {
@@ -21,37 +30,9 @@ function DataGridOrders({ cars, orders }) {
   const { t } = useTranslation();
 
   useEffect(() => {
-    const formattedOrders = orders.map((order, index) => {
-      const startDate = order.rentalStartDate
-        ? new Date(order.rentalStartDate)
-        : new Date();
-      const endDate = order.rentalEndDate
-        ? new Date(order.rentalEndDate)
-        : new Date();
-
-      // Найти автомобиль по carNumber
-      const car = cars.find((c) => c.carNumber === order.carNumber);
-
-      // Скрываем PII если _visibility.hideClientContacts === true
-      const hideContacts = order._visibility?.hideClientContacts === true;
-      
-      return {
-        id: index + 1,
-        customerName: hideContacts ? "—" : order.customerName,
-        phone: hideContacts ? "—" : order.phone,
-        carNumber: order.carNumber,
-        regNumber: car ? car.regNumber : "", // <-- регистрационный номер из cars
-        email: hideContacts ? "—" : order.email,
-        rentalStartDate: startDate.toLocaleDateString(),
-        rentalEndDate: endDate.toLocaleDateString(),
-        originalStartDate: startDate,
-        originalEndDate: endDate,
-        numberOfDays: order.numberOfDays,
-        totalPrice: order.totalPrice,
-        carModel: order.carModel,
-        confirmed: order.confirmed,
-      };
-    });
+    const formattedOrders = orders.map((order, index) =>
+      mapOrderToOrdersDataGridRow(order, index, cars)
+    );
 
     setOrderData(formattedOrders);
   }, [orders, cars]);
@@ -148,10 +129,8 @@ function DataGridOrders({ cars, orders }) {
   };
 
   const filteredOrderData = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const today = dayjs().tz(BUSINESS_TZ).format("YYYY-MM-DD");
+    const tomorrow = dayjs().tz(BUSINESS_TZ).add(1, "day").format("YYYY-MM-DD");
 
     switch (filterType) {
       case "activeToday":
@@ -170,7 +149,7 @@ function DataGridOrders({ cars, orders }) {
           try {
             return (
               order.originalStartDate &&
-              order.originalStartDate.toDateString() === today.toDateString()
+              order.originalStartDate === today
             );
           } catch (error) {
             console.error("Error filtering starting today:", error, order);
@@ -182,7 +161,7 @@ function DataGridOrders({ cars, orders }) {
           try {
             return (
               order.originalStartDate &&
-              order.originalStartDate.toDateString() === tomorrow.toDateString()
+              order.originalStartDate === tomorrow
             );
           } catch (error) {
             console.error("Error filtering starting tomorrow:", error, order);
@@ -194,7 +173,7 @@ function DataGridOrders({ cars, orders }) {
           try {
             return (
               order.originalEndDate &&
-              order.originalEndDate.toDateString() === today.toDateString()
+              order.originalEndDate === today
             );
           } catch (error) {
             console.error("Error filtering ending today:", error, order);
@@ -206,7 +185,7 @@ function DataGridOrders({ cars, orders }) {
           try {
             return (
               order.originalEndDate &&
-              order.originalEndDate.toDateString() === tomorrow.toDateString()
+              order.originalEndDate === tomorrow
             );
           } catch (error) {
             console.error("Error filtering ending tomorrow:", error, order);

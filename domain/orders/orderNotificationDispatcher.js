@@ -32,13 +32,12 @@ import {
   getPriorityByIntent,
 } from "./orderNotificationPolicy";
 import { getOrderAccess } from "./orderAccessPolicy";
-import { getTimeBucket } from "@/domain/time/athensTime";
+import { getBusinessDaySpanFromStoredDates } from "./numberOfDays";
+import { getTimeBucket, fromServerUTC } from "@/domain/time/athensTime";
 import { ROLE } from "./admin-rbac";
 import { getApiUrl, sendTelegramMessage } from "@utils/action";
 import { DEVELOPER_EMAIL } from "@config/email";
-import { getOrderNotificationStrings } from "@locales/customerEmail";
 import { renderCustomerOrderConfirmationEmail, renderAdminOrderNotificationEmail } from "@/app/ui/email/renderEmail";
-import dayjs from "dayjs";
 
 // ════════════════════════════════════════════════════════════════
 // TYPES
@@ -175,7 +174,9 @@ async function auditLog({ order, user, action, access, intent, source }) {
  */
 function formatDateShort(d) {
   if (!d) return "—";
-  return dayjs(d).format("DD-MM-YY");
+  const athens = fromServerUTC(d);
+  if (!athens || !athens.isValid()) return "—";
+  return athens.format("DD-MM-YY");
 }
 
 /**
@@ -187,6 +188,9 @@ function formatDateShort(d) {
  */
 function formatNotificationText(payload, reason) {
   if (payload.intent === "ORDER_CREATED") {
+    const days =
+      payload.numberOfDays ??
+      getBusinessDaySpanFromStoredDates(payload.rentalStartDate, payload.rentalEndDate);
     const carDisplay = payload.carNumber
       ? `${payload.carModel || "—"} (${payload.carNumber})`
       : (payload.carModel || "—");
@@ -204,6 +208,7 @@ function formatNotificationText(payload, reason) {
       `🚗 Car: ${carDisplay}`,
       `📅 From: ${formatDateShort(payload.rentalStartDate)}`,
       `📅 To: ${formatDateShort(payload.rentalEndDate)}`,
+      `🗓 Days: ${days}`,
       `💰 Total: €${payload.totalPrice ?? ""}`,
       ...(hasPII ? ["", "👤 Customer:", ...customerLines, "------------"] : []),
     ].filter(Boolean);
@@ -353,6 +358,7 @@ async function dispatchOrderNotifications(notifications, payload, access, compan
   
   const intent = payload.intent;
   const promises = [];
+  const failures = [];
   
   for (const notification of notifications) {
     const { target, channels, reason, includePII } = notification;
@@ -367,21 +373,41 @@ async function dispatchOrderNotifications(notifications, payload, access, compan
       if (channel === "TELEGRAM") {
         promises.push(
           sendTelegramNotification(target, safePayload, reason, priority)
-            .catch(err => console.error(`[Notification Error] TELEGRAM → ${target}:`, err))
+            .catch(err => {
+              failures.push({ channel, target, reason, err });
+              throw err;
+            })
         );
       }
       
       if (channel === "EMAIL") {
         promises.push(
           sendEmailNotification(target, safePayload, reason, priority, companyEmail)
-            .catch(err => console.error(`[Notification Error] EMAIL → ${target}:`, err))
+            .catch(err => {
+              failures.push({ channel, target, reason, err });
+              throw err;
+            })
         );
       }
     }
   }
   
-  // Отправляем параллельно, не блокируем основной flow
+  // Отправляем параллельно; ошибки агрегируем и отдаём наверх вызывающему коду.
   await Promise.allSettled(promises);
+
+  if (failures.length > 0) {
+    for (const failure of failures) {
+      console.error(
+        `[Notification Error] ${failure.channel} → ${failure.target}:`,
+        failure.err
+      );
+    }
+
+    const firstErrorMessage = failures[0]?.err?.message || "Unknown notification error";
+    throw new Error(
+      `Notification dispatch failed (${failures.length} channel(s)): ${firstErrorMessage}`
+    );
+  }
 }
 
 // ════════════════════════════════════════════════════════════════

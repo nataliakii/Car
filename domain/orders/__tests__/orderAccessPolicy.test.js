@@ -69,7 +69,7 @@ describe("orderAccessPolicy", () => {
   // ════════════════════════════════════════════════════════════════
   
   describe("ADMIN + Client Order", () => {
-    it("UNCONFIRMED + FUTURE: view only, no PII, can delete", () => {
+    it("UNCONFIRMED + FUTURE: view only, no PII, cannot delete; return fields allowed by field flags", () => {
       const access = getOrderAccess({
         role: "ADMIN",
         isClientOrder: true,
@@ -80,10 +80,10 @@ describe("orderAccessPolicy", () => {
 
       expect(access.canView).toBe(true);
       expect(access.canEdit).toBe(false);
-      expect(access.canDelete).toBe(true);
+      expect(access.canDelete).toBe(false);
       expect(access.canEditPickupDate).toBe(false);
-      expect(access.canEditReturnDate).toBe(false);
-      expect(access.canEditReturn).toBe(false);
+      expect(access.canEditReturnDate).toBe(true);
+      expect(access.canEditReturn).toBe(true);
       expect(access.canSeeClientPII).toBe(false); // 🔥 KEY TEST
       expect(access.isViewOnly).toBe(true);
     });
@@ -101,7 +101,7 @@ describe("orderAccessPolicy", () => {
       expect(access.canEdit).toBe(true);
       expect(access.canDelete).toBe(false); // ❌ can't delete confirmed
       expect(access.canEditPickupDate).toBe(false); // ❌ can't edit dates
-      expect(access.canEditReturnDate).toBe(false);
+      expect(access.canEditReturnDate).toBe(true);
       expect(access.canEditPickupPlace).toBe(false); // ❌ can't edit placeIn
       expect(access.canEditReturn).toBe(true); // ✅ can edit return only
       expect(access.canEditInsurance).toBe(false); // ❌ client: never insurance
@@ -205,7 +205,7 @@ describe("orderAccessPolicy", () => {
       expect(access.canEditInsurance).toBe(false);
       expect(access.canEditFranchise).toBe(false);
       expect(access.canEditPricing).toBe(false);
-      expect(access.canEditClientPII).toBe(false);
+      expect(access.canEditClientPII).toBe(true);
       expect(access.canConfirm).toBe(true);
     });
   });

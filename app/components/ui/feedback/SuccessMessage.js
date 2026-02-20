@@ -3,6 +3,7 @@ import { Typography, Box, Button } from "@mui/material";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import "dayjs/locale/ru";
+import { getOrderNumberOfDaysOrZero } from "@/domain/orders/numberOfDays";
 dayjs.extend(timezone);
 import { useTranslation } from "react-i18next";
 
@@ -92,7 +93,7 @@ const SuccessMessage = ({
         variant="h5"
         color="primary.red"
       >
-        {t("bookMesssages.bookDays")} {submittedOrder.numberOfDays}{" "}
+        {t("bookMesssages.bookDays")} {getOrderNumberOfDaysOrZero(submittedOrder)}{" "}
       </Typography>
       <Typography
         textAlign="center"
