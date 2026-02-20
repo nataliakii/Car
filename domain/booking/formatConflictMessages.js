@@ -1,19 +1,66 @@
 /**
  * formatConflictMessages
- * 
+ *
  * 🎯 UX-копирайт для сообщений о конфликтах заказов
- * 
+ *
  * ⚠️ ВАЖНО: Только форматирование сообщений, НЕ логика конфликтов
  * Все вычисления (времена, разницы, буферы) должны быть переданы как параметры
  */
 
-import { formatTimeHHMM } from "../time/athensTime";
+function normalizeCustomerLabel(name) {
+  if (typeof name !== "string") return null;
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  if (trimmed === "—" || trimmed === "-") return null;
+  return trimmed;
+}
+
+function isGenericCustomerLabel(label) {
+  if (!label) return false;
+  return label === "Клиент" || /^Заказ\s+/u.test(label);
+}
+
+function buildConflictingOrderLabel({ name, email }) {
+  const safeName = normalizeCustomerLabel(name);
+  const safeEmail = typeof email === "string" && email.trim() ? email.trim() : null;
+
+  if (safeName && safeEmail) {
+    if (safeName.toLowerCase() === safeEmail.toLowerCase()) return safeEmail;
+    if (isGenericCustomerLabel(safeName)) return safeEmail;
+    return `${safeName} (${safeEmail})`;
+  }
+  if (safeName) return safeName;
+  if (safeEmail) return safeEmail;
+  return "Клиент";
+}
+
+function formatGapText(actualGapMinutes) {
+  const numericGap = Number.isFinite(actualGapMinutes)
+    ? Math.round(actualGapMinutes)
+    : 0;
+  const sign = numericGap < 0 ? "-" : "";
+  const absMinutes = Math.abs(numericGap);
+  const gapHours = Math.floor(absMinutes / 60);
+  const gapMins = absMinutes % 60;
+
+  if (absMinutes === 0) {
+    return "0 мин";
+  }
+  if (gapHours > 0 && gapMins > 0) {
+    return `${sign}${gapHours} ч ${gapMins} мин`;
+  }
+  if (gapHours > 0) {
+    return `${sign}${gapHours} ч`;
+  }
+  return `${sign}${gapMins} мин`;
+}
 
 /**
  * Форматирует сообщение о конфликте с подтверждённым заказом (BLOCK)
  * 
  * @param {Object} params
  * @param {string} params.conflictingOrderName - Имя клиента конфликтующего заказа
+ * @param {string} [params.conflictingOrderEmail] - Email конфликтующего заказа (опционально)
  * @param {string} [params.currentReturnTime] - Время возврата текущего заказа "HH:mm" (если конфликт по возврату)
  * @param {string} [params.currentPickupTime] - Время забора текущего заказа "HH:mm" (если конфликт по забору)
  * @param {string} [params.nextPickupTime] - Время забора следующим клиентом "HH:mm" (если конфликт по возврату)
@@ -24,6 +71,7 @@ import { formatTimeHHMM } from "../time/athensTime";
  */
 export function formatConfirmedConflictMessage({
   conflictingOrderName,
+  conflictingOrderEmail,
   currentReturnTime,
   currentPickupTime,
   nextPickupTime,
@@ -38,31 +86,19 @@ export function formatConfirmedConflictMessage({
   const isPickupConflict = currentPickupTime && nextReturnTime;
   
   // Определяем метки динамически
-  const sourceLabel = isPickupConflict ? "забор" : "возврат";
   const sourceLabelCapitalized = isPickupConflict ? "Забор" : "Возврат";
   const targetLabel = isPickupConflict ? "возврат" : "забор";
-  const actionLabel = isPickupConflict ? "время забора" : "время возврата";
-  
+  const conflictLabel = buildConflictingOrderLabel({
+    name: conflictingOrderName,
+    email: conflictingOrderEmail,
+  });
+
   const sourceTime = isPickupConflict ? currentPickupTime : currentReturnTime;
   const targetTime = isPickupConflict ? nextReturnTime : nextPickupTime;
-  // Обрабатываем отрицательные значения (пересечения) как 0
-  const safeGapMinutes = Math.max(0, actualGapMinutes);
-  const gapHours = Math.floor(safeGapMinutes / 60);
-  const gapMins = safeGapMinutes % 60;
-  
-  let gapText;
-  if (safeGapMinutes === 0) {
-    gapText = "меньше 1 минуты";
-  } else if (gapHours > 0 && gapMins > 0) {
-    gapText = `${gapHours} ч ${gapMins} мин`;
-  } else if (gapHours > 0) {
-    gapText = `${gapHours} ч`;
-  } else {
-    gapText = `${gapMins} мин`;
-  }
+  const gapText = formatGapText(actualGapMinutes);
 
   return (
-    `Пересечение с подтверждённым заказом «${conflictingOrderName}».\n` +
+    `Пересечение с подтверждённым заказом «${conflictLabel}».\n` +
     `${sourceLabelCapitalized} в ${sourceTime} конфликтует с ${targetLabel}ом в ${targetTime}.\n` +
     `Реальная разница (буфер): ${gapText}, при требуемом буфере ${requiredBufferHours} ч.\n` +
     `Изменить буфер — ⚙️`
@@ -102,38 +138,22 @@ export function formatPendingConflictMessage({
   const isPickupConflict = currentPickupTime && nextReturnTime;
   
   // Определяем метки динамически
-  const sourceLabel = isPickupConflict ? "забор" : "возврат";
   const sourceLabelCapitalized = isPickupConflict ? "Забор" : "Возврат";
   const targetLabel = isPickupConflict ? "возврат" : "забор";
-  
+  const conflictLabel = buildConflictingOrderLabel({
+    name: conflictingOrderName,
+    email: conflictingOrderEmail,
+  });
+
   const sourceTime = isPickupConflict ? currentPickupTime : currentReturnTime;
   const targetTime = isPickupConflict ? nextReturnTime : nextPickupTime;
-  // Обрабатываем отрицательные значения (пересечения) как 0
-  const safeGapMinutes = Math.max(0, actualGapMinutes);
-  const gapHours = Math.floor(safeGapMinutes / 60);
-  const gapMins = safeGapMinutes % 60;
-  
-  let gapText;
-  if (safeGapMinutes === 0) {
-    gapText = "меньше 1 минуты";
-  } else if (gapHours > 0 && gapMins > 0) {
-    gapText = `${gapHours} ч ${gapMins} мин`;
-  } else if (gapHours > 0) {
-    gapText = `${gapHours} ч`;
-  } else {
-    gapText = `${gapMins} мин`;
-  }
-
-  const fullName = conflictingOrderEmail
-    ? `${conflictingOrderName} (${conflictingOrderEmail})`
-    : conflictingOrderName;
+  const gapText = formatGapText(actualGapMinutes);
 
   return (
-    `Пересечение с неподтверждённым заказом: «${fullName}» —\n` +
+    `Пересечение с неподтверждённым заказом: «${conflictLabel}» —\n` +
     `${conflictingOrderDates}.\n` +
     `${sourceLabelCapitalized} в ${sourceTime} конфликтует с ${targetLabel}ом в ${targetTime}.\n` +
     `Реальная разница (буфер): ${gapText}, при требуемом буфере ${requiredBufferHours} ч.\n` +
     `Изменить буфер — ⚙️`
   );
 }
-

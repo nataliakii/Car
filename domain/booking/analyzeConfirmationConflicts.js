@@ -153,9 +153,14 @@ export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, buffer
       return `${date.date()} ${months[date.month()]}`;
     };
 
+    const safeCustomerName =
+      typeof order.customerName === "string" && order.customerName.trim()
+        ? order.customerName.trim()
+        : "Клиент";
+
     const conflictInfo = {
       orderId,
-      customerName: order.customerName || "Неизвестный",
+      customerName: safeCustomerName,
       email: order.email || null,
       isConfirmed: order.confirmed === true,
       overlapHours: Math.round(overlapHours * 10) / 10,
@@ -184,12 +189,12 @@ export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, buffer
 
     const c = result.blockedByConfirmed[0];
     // Используем gapMinutes, если доступен, иначе вычисляем из gapHours
-    const actualGapMinutes = c.gapMinutes !== undefined
-      ? Math.max(0, c.gapMinutes) // Гарантируем неотрицательное значение
-      : Math.round(c.gapHours * 60);
+    const actualGapMinutes =
+      c.gapMinutes !== undefined ? c.gapMinutes : Math.round(c.gapHours * 60);
 
     result.message = formatConfirmedConflictMessage({
       conflictingOrderName: c.customerName,
+      conflictingOrderEmail: c.email,
       currentReturnTime: c.confirmingReturnTime,
       nextPickupTime: c.otherTimeIn,
       actualGapMinutes: actualGapMinutes,
@@ -208,9 +213,8 @@ export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, buffer
       const conflictingOrderDates = `${c.otherStartDateFormatted} ${c.otherTimeIn} — ${c.otherEndDateFormatted} ${c.otherTimeOut}`;
 
       // Используем gapMinutes, если доступен, иначе вычисляем из gapHours
-      const actualGapMinutes = c.gapMinutes !== undefined
-        ? Math.max(0, c.gapMinutes) // Гарантируем неотрицательное значение
-        : Math.round(c.gapHours * 60);
+      const actualGapMinutes =
+        c.gapMinutes !== undefined ? c.gapMinutes : Math.round(c.gapHours * 60);
 
       result.message = formatPendingConflictMessage({
         conflictingOrderName: c.customerName,
@@ -293,7 +297,9 @@ export function canPendingOrderBeConfirmed({ pendingOrder, allOrders, bufferHour
       // — иначе: возврат PENDING конфликтует с забором CONFIRMED → currentReturnTime=pendingEnd, nextPickupTime=otherStart
       const conflictReturnTime = isPickupConflict ? formatTimeHHMM(otherEnd) : formatTimeHHMM(pendingEnd);
       const conflictPickupTime = isPickupConflict ? formatTimeHHMM(pendingStart) : formatTimeHHMM(otherStart);
-      const actualGapMinutes = Math.max(0, Math.round(isPickupConflict ? gapPickupVsReturn : gapReturnVsPickup));
+      const actualGapMinutes = Math.round(
+        isPickupConflict ? gapPickupVsReturn : gapReturnVsPickup
+      );
 
       return {
         canConfirm: false,
@@ -312,7 +318,11 @@ export function canPendingOrderBeConfirmed({ pendingOrder, allOrders, bufferHour
           requiredBufferHours: effectiveBufferHours,
         },
         message: formatConfirmedConflictMessage({
-          conflictingOrderName: order.customerName || "Неизвестный",
+          conflictingOrderName:
+            typeof order.customerName === "string" && order.customerName.trim()
+              ? order.customerName.trim()
+              : "Клиент",
+          conflictingOrderEmail: order.email || null,
           currentReturnTime: conflictReturnTime,
           nextPickupTime: conflictPickupTime,
           actualGapMinutes: actualGapMinutes,

@@ -1,7 +1,26 @@
 import { unstable_noStore } from "next/cache";
+import { cookies } from "next/headers";
 import AdminView from "./AdminView";
-import { fetchAllCars, reFetchAllOrders, fetchCompany } from "@utils/action";
+import { fetchAllCars, fetchCompany, getApiUrl } from "@utils/action";
 import { COMPANY_ID } from "@/config/company";
+
+async function fetchOrdersForCurrentSession() {
+  const cookieHeader = cookies().toString();
+
+  const response = await fetch(getApiUrl("/api/order/refetch"), {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch orders: ${response.status}`);
+  }
+
+  return response.json();
+}
 /**
  * DataLoader — Server Component для загрузки данных админки
  * 
@@ -18,7 +37,7 @@ export default async function DataLoader({ viewType }) {
   const [company, cars, orders] = await Promise.all([
     fetchCompany(COMPANY_ID, { skipCache: true }),
     fetchAllCars(),
-    reFetchAllOrders(),
+    fetchOrdersForCurrentSession(),
   ]);
 
   // Данные уже загружены — передаём в AdminView без Suspense
