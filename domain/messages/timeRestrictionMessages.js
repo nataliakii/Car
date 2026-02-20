@@ -192,16 +192,16 @@ export function getPendingBusinessWarnings({ startDate, endDate, existingOrders,
     return [];
   }
 
-  const start = dayjs(startDate);
-  const end = dayjs(endDate);
+  const start = dayjs.tz(startDate, "YYYY-MM-DD", BUSINESS_TZ).startOf("day");
+  const end = dayjs.tz(endDate, "YYYY-MM-DD", BUSINESS_TZ).startOf("day");
 
   // Ищем ожидающие бизнес-заявки в диапазоне
   const pendingBusiness = existingOrders.filter((order) => {
     if (order.confirmed) return false;
     if (!isBusinessOrder(order)) return false;
 
-    const orderStart = dayjs(order.rentalStartDate);
-    const orderEnd = dayjs(order.rentalEndDate);
+    const orderStart = dayjs.utc(order.rentalStartDate).tz(BUSINESS_TZ).startOf("day");
+    const orderEnd = dayjs.utc(order.rentalEndDate).tz(BUSINESS_TZ).startOf("day");
 
     // Проверяем пересечение диапазонов
     return orderStart.isBefore(end) && orderEnd.isAfter(start);
@@ -301,4 +301,3 @@ export function formatRestrictionsAsText(restrictions) {
 
   return parts.join("\n\n");
 }
-

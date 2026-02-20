@@ -2,8 +2,14 @@
 import { useEffect, useMemo } from "react";
 import dayjs from "dayjs";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 
 dayjs.extend(isSameOrBefore);
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const BUSINESS_TZ = "Europe/Athens";
 
 /* =========================
    Pure helpers
@@ -65,8 +71,14 @@ export function buildCalendarDays({ month, year, viewMode, rangeDirection }) {
 export function buildOrderDateRange(order) {
   if (!order?.rentalStartDate || !order?.rentalEndDate) return [];
 
-  const startDate = dayjs(order.rentalStartDate);
-  const endDate = dayjs(order.rentalEndDate);
+  const startDate = dayjs
+    .utc(order.rentalStartDate)
+    .tz(BUSINESS_TZ)
+    .startOf("day");
+  const endDate = dayjs
+    .utc(order.rentalEndDate)
+    .tz(BUSINESS_TZ)
+    .startOf("day");
   const dates = [];
 
   let currentDate = startDate;
@@ -217,4 +229,3 @@ export function useMobileCalendarScroll({ days, todayIndex }) {
     };
   }, [todayIndex, days]);
 }
-

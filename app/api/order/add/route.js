@@ -29,7 +29,23 @@ dayjs.extend(isBetween);
 const BUSINESS_TZ = "Europe/Athens";
 
 function toBusinessStartOfDay(value) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return dayjs.tz(value, "YYYY-MM-DD", BUSINESS_TZ).startOf("day");
+  }
   return dayjs(value).tz(BUSINESS_TZ).startOf("day");
+}
+
+function toStoredBusinessDate(value) {
+  const businessDay = dayjs.isDayjs(value)
+    ? value.tz(BUSINESS_TZ).startOf("day")
+    : toBusinessStartOfDay(value);
+  return dayjs
+    .utc(businessDay.format("YYYY-MM-DD"))
+    .hour(12)
+    .minute(0)
+    .second(0)
+    .millisecond(0)
+    .toDate();
 }
 
 function toBooleanField(value, fallback = false) {
@@ -210,8 +226,8 @@ async function postOrderAddHandler(request) {
       customerName,
       phone,
       email: safeEmail,
-      rentalStartDate: startDate.toDate(),
-      rentalEndDate: endDate.toDate(),
+      rentalStartDate: toStoredBusinessDate(startDate),
+      rentalEndDate: toStoredBusinessDate(endDate),
       car: existingCar._id,
       carModel: existingCar.model,
       numberOfDays: days,
@@ -220,7 +236,8 @@ async function postOrderAddHandler(request) {
       timeOut: timeOut ? timeOut : setTimeToDatejs(endDate, null),
       placeIn,
       placeOut,
-      date: dayjs().format("MMM D HH:mm"),
+      // Keep creation date as a real Date object in business timezone context.
+      date: dayjs().tz(BUSINESS_TZ).toDate(),
       confirmed: confirmed,
       my_order: my_order,
       ChildSeats,
@@ -245,6 +262,11 @@ async function postOrderAddHandler(request) {
       ];
 
       await newOrder.save();
+      // Keep Car.orders in sync for pending orders too.
+      if (!existingCar.orders.some((id) => String(id) === String(newOrder._id))) {
+        existingCar.orders.push(newOrder._id);
+        await existingCar.save();
+      }
 
       await updateConflictingOrders(conflicOrdersId, newOrder._id);
 
@@ -283,9 +305,11 @@ async function postOrderAddHandler(request) {
     // Save the new order
     await newOrder.save();
     // Add the new order to the car's orders array
-    existingCar.orders.push(newOrder._id);
-    // Save the updated car document
-    await existingCar.save();
+    if (!existingCar.orders.some((id) => String(id) === String(newOrder._id))) {
+      existingCar.orders.push(newOrder._id);
+      // Save the updated car document
+      await existingCar.save();
+    }
 
     // Уведомления по политике (orderNotificationPolicy)
     let notificationError = null;

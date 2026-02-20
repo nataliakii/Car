@@ -42,8 +42,8 @@ export const processOrders = (orders) => {
   const confirmedDates = [];
 
   orders.forEach((order) => {
-    const startDate = dayjs(order.rentalStartDate);
-    const endDate = dayjs(order.rentalEndDate);
+    const startDate = dayjs.utc(order.rentalStartDate).tz(TIMEZONE).startOf("day");
+    const endDate = dayjs.utc(order.rentalEndDate).tz(TIMEZONE).startOf("day");
 
     let currentDate = startDate;
     while (
@@ -536,10 +536,17 @@ export function extractArraysOfStartEndConfPending(orders) {
 export function returnOverlapOrders(orders, dateStr) {
   let overlapOrders = [];
   orders?.forEach((order) => {
-    const rentalStart = dayjs(order.rentalStartDate).format("YYYY-MM-DD");
-    const rentalEnd = dayjs(order.rentalEndDate).format("YYYY-MM-DD");
+    const rentalStart = dayjs
+      .utc(order.rentalStartDate)
+      .tz(TIMEZONE)
+      .format("YYYY-MM-DD");
+    const rentalEnd = dayjs
+      .utc(order.rentalEndDate)
+      .tz(TIMEZONE)
+      .format("YYYY-MM-DD");
+    const targetDate = dayjs.tz(dateStr, "YYYY-MM-DD", TIMEZONE);
 
-    if (dayjs(dateStr).isBetween(rentalStart, rentalEnd, "day", "[]")) {
+    if (targetDate.isBetween(rentalStart, rentalEnd, "day", "[]")) {
       overlapOrders.push(order);
     }
   });
@@ -556,8 +563,14 @@ export function returnOverlapOrdersObjects(
 
   // Первый проход: собираем все даты и подсчитываем их повторения
   orders?.forEach((order) => {
-    const rentalStart = dayjs(order.rentalStartDate);
-    const rentalEnd = dayjs(order.rentalEndDate);
+    const rentalStart = dayjs
+      .utc(order.rentalStartDate)
+      .tz(TIMEZONE)
+      .startOf("day");
+    const rentalEnd = dayjs
+      .utc(order.rentalEndDate)
+      .tz(TIMEZONE)
+      .startOf("day");
     let currentDate = rentalStart;
 
     while (currentDate.isBetween(rentalStart, rentalEnd, "day", "[]")) {

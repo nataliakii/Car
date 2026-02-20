@@ -211,6 +211,8 @@ export const addOrderNew = async (orderData) => {
         status: "pending",
         message: result.message,
         data: result.data,
+        messageCode: result.messageCode,
+        dates: result.dates,
       };
     } else if (response.status === 409) {
       // Confirmed dates conflict

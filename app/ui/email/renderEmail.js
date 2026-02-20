@@ -3,30 +3,27 @@
  * Single entry: payload + intent → full email content. No design in API.
  */
 
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
 import "dayjs/locale/ru";
 import "dayjs/locale/el";
 import { getCustomerEmailStrings } from "@locales/customerEmail";
+import { fromServerUTC, formatTimeHHMM } from "@/domain/time/athensTime";
 import { renderCustomerOrderConfirmation } from "@/app/ui/email/templates/customerOrderConfirmation";
 import { renderAdminOrderNotificationHtml } from "@/app/ui/email/templates/adminOrderNotification";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-const BUSINESS_TZ = "Europe/Athens";
 
 /** Дата в формате "17 Jan 2026" / "17 Янв 2026" / "17 Ιαν 2026" по локали */
 function formatDateLong(d, locale) {
   if (!d) return "—";
   const loc = locale === "ru" ? "ru" : locale === "el" ? "el" : "en";
-  return dayjs(d).tz(BUSINESS_TZ).locale(loc).format("D MMM YYYY");
+  const athens = fromServerUTC(d);
+  if (!athens || !athens.isValid()) return "—";
+  return athens.locale(loc).format("D MMM YYYY");
 }
 
 function formatTime(d) {
   if (!d) return "—";
-  return dayjs(d).tz(BUSINESS_TZ).format("HH:mm");
+  const athens = fromServerUTC(d);
+  if (!athens || !athens.isValid()) return "—";
+  return formatTimeHHMM(athens);
 }
 
 /**

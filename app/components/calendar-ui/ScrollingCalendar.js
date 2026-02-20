@@ -3,7 +3,14 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DateRangeCalendar } from "@mui/x-date-pickers-pro/DateRangeCalendar";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { Box, Typography } from "@mui/material";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const BUSINESS_TZ = "Europe/Athens";
 
 const ScrollingCalendar = React.memo(function ScrollingCalendar({
   car,
@@ -19,8 +26,14 @@ const ScrollingCalendar = React.memo(function ScrollingCalendar({
 
     const allUnavailableDates = [];
     car.orders.forEach((order) => {
-      let currentDate = dayjs(order.rentalStartDate);
-      const endDate = dayjs(order.rentalEndDate);
+      let currentDate = dayjs
+        .utc(order.rentalStartDate)
+        .tz(BUSINESS_TZ)
+        .startOf("day");
+      const endDate = dayjs
+        .utc(order.rentalEndDate)
+        .tz(BUSINESS_TZ)
+        .startOf("day");
 
       while (
         currentDate.isBefore(endDate) ||
@@ -100,4 +113,3 @@ const ScrollingCalendar = React.memo(function ScrollingCalendar({
 });
 
 export default ScrollingCalendar;
-

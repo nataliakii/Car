@@ -21,7 +21,23 @@ dayjs.extend(timezone);
 const BUSINESS_TZ = "Europe/Athens";
 
 function toBusinessStartOfDay(value) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return dayjs.tz(value, "YYYY-MM-DD", BUSINESS_TZ).startOf("day");
+  }
   return dayjs(value).tz(BUSINESS_TZ).startOf("day");
+}
+
+function toStoredBusinessDate(value) {
+  const businessDay = dayjs.isDayjs(value)
+    ? value.tz(BUSINESS_TZ).startOf("day")
+    : toBusinessStartOfDay(value);
+  return dayjs
+    .utc(businessDay.format("YYYY-MM-DD"))
+    .hour(12)
+    .minute(0)
+    .second(0)
+    .millisecond(0)
+    .toDate();
 }
 
 function getBusinessDaySpan(start, end) {
@@ -405,11 +421,11 @@ export const PATCH = async (request, { params }) => {
 
       // Convert dates and times
       const newStartDate = payload.rentalStartDate
-        ? dayjs(payload.rentalStartDate)
-        : dayjs(order.rentalStartDate);
+        ? toBusinessStartOfDay(payload.rentalStartDate)
+        : toBusinessStartOfDay(order.rentalStartDate);
       const newEndDate = payload.rentalEndDate
-        ? dayjs(payload.rentalEndDate)
-        : dayjs(order.rentalEndDate);
+        ? toBusinessStartOfDay(payload.rentalEndDate)
+        : toBusinessStartOfDay(order.rentalEndDate);
       const newTimeIn = payload.timeIn
         ? dayjs(payload.timeIn)
         : dayjs(order.timeIn);
@@ -568,8 +584,8 @@ export const PATCH = async (request, { params }) => {
             // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
             // Restored from pre-refactor conflict logic: Update order fields
-            order.rentalStartDate = toBusinessStartOfDay(start).toDate();
-            order.rentalEndDate = toBusinessStartOfDay(end).toDate();
+            order.rentalStartDate = toStoredBusinessDate(start);
+            order.rentalEndDate = toStoredBusinessDate(end);
             order.numberOfDays = days202;
             
             // Always update totalPrice (it's the calculated price)
@@ -704,8 +720,8 @@ export const PATCH = async (request, { params }) => {
       // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
       // Restored from pre-refactor conflict logic: Update order fields
-      order.rentalStartDate = toBusinessStartOfDay(start).toDate();
-      order.rentalEndDate = toBusinessStartOfDay(end).toDate();
+      order.rentalStartDate = toStoredBusinessDate(start);
+      order.rentalEndDate = toStoredBusinessDate(end);
       order.numberOfDays = days;
       
       // Always update totalPrice (it's the calculated price)
@@ -834,8 +850,8 @@ export const PATCH = async (request, { params }) => {
 
         if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
           const result = await carDoc.calculateTotalRentalPricePerDay(
-            dayjs(order.rentalStartDate),
-            dayjs(order.rentalEndDate),
+            toBusinessStartOfDay(order.rentalStartDate),
+            toBusinessStartOfDay(order.rentalEndDate),
             order.insurance,
             order.ChildSeats,
             toBooleanField(order.secondDriver, false)

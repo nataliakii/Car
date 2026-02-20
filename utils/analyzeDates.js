@@ -87,7 +87,7 @@ function analyzeDates(orders) {
           ? dayjs.utc(order.timeIn)
           : null,
         timeEnd: isSameDay(currentDate, endDate)
-          ? dayjs.utc(new Date(order.timeOut))
+          ? dayjs.utc(order.timeOut)
           : null,
 
         isOverlapped: dateOccurrences.get(dateStr) - 1,

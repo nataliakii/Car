@@ -16,7 +16,23 @@ dayjs.extend(timezone);
 const BUSINESS_TZ = "Europe/Athens";
 
 function toBusinessStartOfDay(value) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return dayjs.tz(value, "YYYY-MM-DD", BUSINESS_TZ).startOf("day");
+  }
   return dayjs(value).tz(BUSINESS_TZ).startOf("day");
+}
+
+function toStoredBusinessDate(value) {
+  const businessDay = dayjs.isDayjs(value)
+    ? value.tz(BUSINESS_TZ).startOf("day")
+    : toBusinessStartOfDay(value);
+  return dayjs
+    .utc(businessDay.format("YYYY-MM-DD"))
+    .hour(12)
+    .minute(0)
+    .second(0)
+    .millisecond(0)
+    .toDate();
 }
 
 function getBusinessDaySpan(start, end) {
@@ -208,12 +224,12 @@ export const PUT = async (req) => {
 
     // Конвертация дат и времени
     const newStartDate = rentalStartDate
-      ? dayjs(rentalStartDate)
-      : dayjs(order.rentalStartDate);
+      ? toBusinessStartOfDay(rentalStartDate)
+      : toBusinessStartOfDay(order.rentalStartDate);
 
     const newEndDate = rentalEndDate
-      ? dayjs(rentalEndDate)
-      : dayjs(order.rentalEndDate);
+      ? toBusinessStartOfDay(rentalEndDate)
+      : toBusinessStartOfDay(order.rentalEndDate);
     const newTimeIn = timeIn ? dayjs(timeIn) : dayjs(order.timeIn);
     const newTimeOut = timeOut ? dayjs(timeOut) : dayjs(order.timeOut);
 
@@ -326,8 +342,8 @@ export const PUT = async (req) => {
           }
           // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
-          order.rentalStartDate = toBusinessStartOfDay(start).toDate();
-          order.rentalEndDate = toBusinessStartOfDay(end).toDate();
+          order.rentalStartDate = toStoredBusinessDate(start);
+          order.rentalEndDate = toStoredBusinessDate(end);
           order.numberOfDays = days202;
           order.totalPrice = totalPrice202;
           order.timeIn = start.toDate();
@@ -394,8 +410,8 @@ export const PUT = async (req) => {
     // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
 
     // Update the order
-    order.rentalStartDate = toBusinessStartOfDay(start).toDate();
-    order.rentalEndDate = toBusinessStartOfDay(end).toDate();
+    order.rentalStartDate = toStoredBusinessDate(start);
+    order.rentalEndDate = toStoredBusinessDate(end);
     order.numberOfDays = days;
     order.totalPrice = totalPrice;
     order.timeIn = start.toDate();
@@ -453,11 +469,11 @@ export const PUT = async (req) => {
         
         // Check if requested fields match persisted fields
         const mismatches = [];
-        if (rentalStartDate && persistedFields.rentalStartDate !== dayjs(rentalStartDate).utc().toISOString()) {
-          mismatches.push(`rentalStartDate: requested=${dayjs(rentalStartDate).utc().toISOString()}, persisted=${persistedFields.rentalStartDate}`);
+        if (rentalStartDate && persistedFields.rentalStartDate !== toStoredBusinessDate(rentalStartDate).toISOString()) {
+          mismatches.push(`rentalStartDate: requested=${toStoredBusinessDate(rentalStartDate).toISOString()}, persisted=${persistedFields.rentalStartDate}`);
         }
-        if (rentalEndDate && persistedFields.rentalEndDate !== dayjs(rentalEndDate).utc().toISOString()) {
-          mismatches.push(`rentalEndDate: requested=${dayjs(rentalEndDate).utc().toISOString()}, persisted=${persistedFields.rentalEndDate}`);
+        if (rentalEndDate && persistedFields.rentalEndDate !== toStoredBusinessDate(rentalEndDate).toISOString()) {
+          mismatches.push(`rentalEndDate: requested=${toStoredBusinessDate(rentalEndDate).toISOString()}, persisted=${persistedFields.rentalEndDate}`);
         }
         if (timeIn && persistedFields.timeIn !== dayjs(timeIn).utc().toISOString()) {
           mismatches.push(`timeIn: requested=${dayjs(timeIn).utc().toISOString()}, persisted=${persistedFields.timeIn}`);
