@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Paper, Stack, Typography, Divider } from "@mui/material";
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
@@ -9,24 +9,13 @@ import { seasons as fallbackSeasons } from "@utils/companyData";
 import { useTranslation } from "react-i18next";
 import { useMainContext } from "@app/Context";
 
-// Function to get the current season (same as above)
-// const getCurrentSeason = (date = dayjs()) => {
-//   const currentYear = date.year();
+const DAY_RANGE_TRANSLATION_KEYS = {
+  4: "carPark.1-4days",
+  7: "carPark.5-14days",
+  14: "carPark.14+days",
+};
 
-//   for (const [season, range] of Object.entries(seasons)) {
-//     const startDate = dayjs(`${range.start}/${currentYear}`, "DD/MM/YYYY");
-//     const endDate = dayjs(`${range.end}/${currentYear}`, "DD/MM/YYYY");
-
-//     if (date.isAfter(startDate) && date.isBefore(endDate)) {
-//       return season;
-//     }
-//   }
-
-//   return "NoSeason";
-// };
 const getCurrentSeason = (date = dayjs(), seasons) => {
-  // Если date не задана (или это текущий месяц), используем первый день месяца
-  // Если date — это выбранная дата бронирования, используем её
   let targetDate;
   if (!date || dayjs(date).isSame(dayjs(), "month")) {
     targetDate = dayjs().startOf("month");
@@ -51,27 +40,6 @@ const getCurrentSeason = (date = dayjs(), seasons) => {
   return "NoSeason"; // Default season
 };
 
-// const getCurrentSeason = () => {
-//   const today = dayjs();
-//   const currentYear = today.year();
-
-//   for (const [season, range] of Object.entries(seasons)) {
-//     const startDate = dayjs(`${range.start}/${currentYear}`, "DD/MM/YYYY");
-//     const endDate = dayjs(`${range.end}/${currentYear}`, "DD/MM/YYYY");
-
-//     if (today.isAfter(startDate) && today.isBefore(endDate)) {
-//       return season;
-//     }
-//   }
-
-//   return "NoSeason"; // Default season
-// };
-
-// PricingDisplay component to show current season pricing
-// const PricingDisplay = ({ prices }) => {
-//   const { t } = useTranslation();
-//   const currentSeason = getCurrentSeason(); // Get current season
-//   const pricingData = prices[currentSeason].days || {}; // Get the days and amounts for the current season
 const PricingDisplay = ({
   prices,
   selectedDate,
@@ -113,17 +81,15 @@ const PricingDisplay = ({
   const seasons = useMainContext()?.company?.seasons ?? fallbackSeasons;
   const currentSeason = getCurrentSeason(seasonDate, seasons);
   const pricingData = prices[currentSeason]?.days || {};
+  const pricingEntries = Object.entries(pricingData);
+  const totalPricingEntries = pricingEntries.length;
+  const discountFactor = 1 - (discount || 0) / 100;
+  const currentSeasonRange = seasons[currentSeason];
 
   // Helper function для формирования шапки таблицы цен при аренде авто
   const getDayRangeText = (days) => {
-    const daysNum = Number(days); // Явное преобразование в число
-    //console.log("1. Читаем из Tiers:", days, daysNum);
-    //if (daysNum >= 1 && daysNum <= 4) return t("carPark.1-4days");
-    if (daysNum === 4) return t("carPark.1-4days");
-    if (daysNum === 7) return t("carPark.5-14days");
-    if (daysNum === 14) return t("carPark.14+days"); // Явное условие для >14
-
-    return ""; // Запасной вариант
+    const key = DAY_RANGE_TRANSLATION_KEYS[Number(days)];
+    return key ? t(key) : "";
   };
 
   return (
@@ -131,8 +97,8 @@ const PricingDisplay = ({
       {" "}
       <Typography>
         {t("car.pricesFor")} {currentSeason} ({t("basic.from")}{" "}
-        {seasons[currentSeason].start} {t("basic.till")}{" "}
-        {seasons[currentSeason].end})
+        {currentSeasonRange?.start} {t("basic.till")}{" "}
+        {currentSeasonRange?.end})
       </Typography>
       <Paper
         elevation={0}
@@ -159,10 +125,8 @@ const PricingDisplay = ({
           }}
         >
           {/* Map over the day tiers and prices */}
-          {Object.entries(pricingData).map(([days, amount], index) => {
-            const discountedPrice = Math.round(
-              amount * (1 - (discount || 0) / 100)
-            );
+          {pricingEntries.map(([days, amount], index) => {
+            const discountedPrice = Math.round(amount * discountFactor);
             let priceDisplay;
             if (discountType === "full") {
               // Скидка действует весь месяц
@@ -220,7 +184,7 @@ const PricingDisplay = ({
                   </Typography>
                 </Stack>
                 {/* Divider between prices */}
-                {index + 1 < Object.entries(pricingData).length && (
+                {index + 1 < totalPricingEntries && (
                   <Divider orientation="vertical" flexItem />
                 )}
               </React.Fragment>
