@@ -60,6 +60,10 @@ const OrderSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  IsConfirmedEmailSent: {
+    type: Boolean,
+    default: false,
+  },
   hasConflictDates: {
     type: [mongoose.Schema.Types.ObjectId],
     ref: "Order",
@@ -236,6 +240,16 @@ const Order = mongoose.models?.Order || mongoose.model("Order", OrderSchema);
 if (Order?.schema && !Order.schema.path("secondDriver")) {
   Order.schema.add({
     secondDriver: {
+      type: Boolean,
+      default: false,
+    },
+  });
+}
+
+// HMR/cache safety: ensure IsConfirmedEmailSent exists on cached model schema.
+if (Order?.schema && !Order.schema.path("IsConfirmedEmailSent")) {
+  Order.schema.add({
+    IsConfirmedEmailSent: {
       type: Boolean,
       default: false,
     },

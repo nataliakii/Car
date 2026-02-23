@@ -5,6 +5,7 @@ import { connectToDB } from "@utils/database";
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
 import cloudinary from "@utils/cloudinary";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 dayjs.extend(isBetween);
 
@@ -30,9 +31,14 @@ export async function POST(req) {
 
     carData.dateAddCar = dayjs().toDate();
     // Create and save the car
-  const newCar = new Car(carData);
+    const newCar = new Car(carData);
 
     await newCar.save();
+
+    // Инвалидируем кеш по машинам после добавления
+    revalidateTag("cars");
+    revalidatePath("/api/car/all");
+    revalidatePath("/api/car/models");
 
     return NextResponse.json(
       {

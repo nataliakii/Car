@@ -68,7 +68,7 @@
     "yourName": "Numele dvs.",
     "phone": "Număr de telefon",
     "email": "Email",
-    "secondDriver": "Al doilea șofer (5 €/zi)",
+    "secondDriver": "Al doilea șofer ({{price}} €/zi)",
     "thank": "Vă mulțumim pentru rezervare!",
     "daysNumber": "Număr de zile:",
     "price": "Preț total:",

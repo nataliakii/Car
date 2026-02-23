@@ -1,7 +1,6 @@
 import React, { Suspense } from "react";
 import Feed from "@app/components/Feed";
 import Script from "next/script";
-import { unstable_noStore } from "next/cache";
 import { fetchAllCars, reFetchActiveOrders, fetchCompany } from "@utils/action";
 import CarGrid from "./components/CarGrid";
 import { COMPANY_ID } from "@config/company";
@@ -49,8 +48,6 @@ export async function generateMetadata() {
 }
 
 export default async function Home() {
-  unstable_noStore();
-  
   // Загружаем данные параллельно для ускорения загрузки
   const [carsData, ordersData, companyData] = await Promise.all([
     fetchAllCars(),

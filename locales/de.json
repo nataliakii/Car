@@ -68,7 +68,7 @@
     "yourName": "Ihr Name",
     "phone": "Telefonnummer",
     "email": "E-Mail",
-    "secondDriver": "Zweiter Fahrer (5 €/Tag)",
+    "secondDriver": "Zweiter Fahrer ({{price}} €/Tag)",
     "thank": "Vielen Dank für Ihre Buchung!",
     "daysNumber": "Anzahl der Tage:",
     "price": "Gesamtpreis:",

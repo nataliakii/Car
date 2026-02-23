@@ -48,6 +48,7 @@ import timezone from "dayjs/plugin/timezone";
 import { useMainContext } from "../../Context";
 import { useSnackbar } from "notistack";
 import { calculateTotalPrice } from "@utils/action";
+import { getSecondDriverPriceLabelValue } from "@utils/secondDriverPricing";
 // 🎯 Athens timezone utilities — ЕДИНСТВЕННЫЙ источник правды для времени
 import {
   ATHENS_TZ,
@@ -81,6 +82,7 @@ const BookingModal = ({
   const [daysAndTotal, setDaysAndTotal] = useState({ days: 0, totalPrice: 0 });
   const [calcLoading, setCalcLoading] = useState(false);
   const { t } = useTranslation();
+  const secondDriverPriceLabelValue = getSecondDriverPriceLabelValue();
   const { company, companyLoading, companyError, lang } = useMainContext();
 
   const [name, setName] = useState("");
@@ -1187,7 +1189,9 @@ const BookingModal = ({
                           />
                         }
                         sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
-                        label={t("order.secondDriver")}
+                        label={t("order.secondDriver", {
+                          price: secondDriverPriceLabelValue,
+                        })}
                       />
                     </Box>
                   </Box>
@@ -1324,4 +1328,3 @@ const BookingModal = ({
 };
 
 export default BookingModal;
-

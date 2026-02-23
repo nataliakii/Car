@@ -44,6 +44,7 @@ import {
   addOrderNew,
   calculateTotalPrice,
 } from "@utils/action";
+import { getSecondDriverPriceLabelValue } from "@utils/secondDriverPricing";
 import { useTranslation } from "react-i18next";
 // 🎯 Athens timezone utilities — ЕДИНСТВЕННЫЙ источник правды для времени
 import {
@@ -60,6 +61,8 @@ dayjs.extend(timezone);
 const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
   const { fetchAndUpdateOrders, company } =
     useMainContext();
+  const { t } = useTranslation();
+  const secondDriverPriceLabelValue = getSecondDriverPriceLabelValue();
 
   const locations = company.locations.map((loc) => loc.name);
 
@@ -787,7 +790,9 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
                 />
               }
               sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
-              label={t("order.secondDriver")}
+              label={t("order.secondDriver", {
+                price: secondDriverPriceLabelValue,
+              })}
             />
           </Box>
         </Box>
@@ -795,8 +800,6 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
       </Box>
     );
   };
-
-  const { t } = useTranslation();
 
   return (
     <Modal

@@ -36,7 +36,7 @@ export default async function DataLoader({ viewType }) {
   // skipCache: true для компании — чтобы после изменения буфера при перезагрузке подтягивались свежие данные из БД
   const [company, cars, orders] = await Promise.all([
     fetchCompany(COMPANY_ID, { skipCache: true }),
-    fetchAllCars(),
+    fetchAllCars({ skipCache: true }),
     fetchOrdersForCurrentSession(),
   ]);
 

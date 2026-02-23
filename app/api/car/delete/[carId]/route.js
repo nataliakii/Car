@@ -1,6 +1,6 @@
 import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 export const DELETE = async (request, { params }) => {
   try {
@@ -11,6 +11,7 @@ export const DELETE = async (request, { params }) => {
     await Car.findByIdAndDelete(carId);
 
     // Инвалидируем кеш для списка машин
+    revalidateTag("cars");
     revalidatePath("/api/car/all");
     revalidatePath("/api/car/models");
     revalidatePath(`/api/car/${carId}`);

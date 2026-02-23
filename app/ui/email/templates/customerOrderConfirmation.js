@@ -18,6 +18,7 @@ import { EMAIL_SIGNATURE_HTML } from "@/app/ui/email/templates/signature";
  *   numberOfDays?: string,
  *   childSeats?: string,
  *   insurance?: string,
+ *   secondDriverLabel?: string,
  *   secondDriverEnabled?: boolean,
  *   secondDriverText?: string,
  *   placeIn?: string,
@@ -40,6 +41,7 @@ export function renderCustomerOrderConfirmation(data) {
     numberOfDays = "",
     childSeats = "0",
     insurance = "",
+    secondDriverLabel = "",
     secondDriverEnabled = false,
     secondDriverText = "",
     placeIn = "",
@@ -81,7 +83,7 @@ export function renderCustomerOrderConfirmation(data) {
     row(t.childSeatsLabel || "Child seats", childSeats !== undefined && childSeats !== "" ? childSeats : "0"),
     row(t.insuranceLabel || "Insurance", insurance || "—"),
     ...(secondDriverEnabled
-      ? [row(t.secondDriverLabel || "Second driver", secondDriverText || (t.secondDriverEnabled || "Yes"))]
+      ? [row(secondDriverLabel || t.secondDriverLabel || "Second driver", secondDriverText || (t.secondDriverEnabled || "Yes"))]
       : []),
     row(t.pickupLocationLabel || "Pick-up location", placeIn || "—"),
     row(t.returnLocationLabel || "Return location", placeOut || "—"),

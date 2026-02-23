@@ -1,7 +1,7 @@
 import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
 import { carsData as initialCarsData } from "@utils/initialData";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 export const POST = async (request) => {
   try {
@@ -25,6 +25,7 @@ export const POST = async (request) => {
     const newCars = await Car.create(incomingCarsData);
     
     // Инвалидируем кеш для списка машин
+    revalidateTag("cars");
     revalidatePath("/api/car/all");
     revalidatePath("/api/car/models");
     
@@ -78,6 +79,7 @@ export const GET = async (request) => {
     const newCars = await Car.create(initialCarsData);
 
     // Инвалидируем кеш для списка машин
+    revalidateTag("cars");
     revalidatePath("/api/car/all");
     revalidatePath("/api/car/models");
 

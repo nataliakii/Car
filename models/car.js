@@ -1,5 +1,6 @@
 import { Schema, model, models } from "mongoose";
 import { seasons } from "@utils/companyData";
+import { getSecondDriverPricePerDay } from "@utils/secondDriverPricing";
 import { CAR_CLASSES, TRANSMISSION_TYPES, FUEL_TYPES } from "./enums";
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
@@ -329,6 +330,7 @@ CarSchema.methods.calculateTotalRentalPricePerDay = async function (
   let kaskoTotal = 0;
   let childSeatsTotal = 0;
   let secondDriverTotal = 0;
+  const secondDriverPricePerDay = getSecondDriverPricePerDay();
 
   // Добавляем стоимость КАСКО, если выбрано CDW
   if (kacko === "CDW") {
@@ -369,10 +371,10 @@ CarSchema.methods.calculateTotalRentalPricePerDay = async function (
     normalizedSecondDriver === "true" ||
     normalizedSecondDriver === "1";
   if (secondDriverEnabled) {
-    secondDriverTotal = 5 * days;
+    secondDriverTotal = secondDriverPricePerDay * days;
     total += secondDriverTotal;
     console.log(
-      `[ALGO] Второй водитель: Цена за день = 5, дней = ${days}, всего = ${secondDriverTotal}`
+      `[ALGO] Второй водитель: Цена за день = ${secondDriverPricePerDay}, дней = ${days}, всего = ${secondDriverTotal}`
     );
   } else {
     console.log("[ALGO] Второй водитель не выбран");

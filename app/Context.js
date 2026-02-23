@@ -257,7 +257,7 @@ export const MainContextProvider = ({
   const resubmitCars = useCallback(async (callback) => {
     setIsLoading(true);
     try {
-      const newCarsData = await fetchAllCars();
+      const newCarsData = await fetchAllCars({ skipCache: true });
       setCars(newCarsData);
       if (process.env.NODE_ENV === "development") {
         console.log("Updated cars data:", newCarsData);

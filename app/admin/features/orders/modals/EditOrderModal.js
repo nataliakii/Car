@@ -48,6 +48,7 @@ import { isSuperAdmin } from "@/domain/orders";
 // 🎯 Модальное окно настройки буфера
 import BufferSettingsModal from "@/app/admin/features/settings/BufferSettingsModal";
 import { ORDER_COLORS } from "@/config/orderColors";
+import { getSecondDriverPriceLabelValue } from "@utils/secondDriverPricing";
 
 import {
   toggleConfirmedStatus,
@@ -94,6 +95,7 @@ const EditOrderModal = ({
   const { allOrders, fetchAndUpdateOrders, company } = useMainContext();
   const { data: session } = useSession();
   const { t } = useTranslation();
+  const secondDriverPriceLabelValue = getSecondDriverPriceLabelValue();
   
   // Get current user for permission checks
   const currentUser = useMemo(() => {
@@ -1222,7 +1224,9 @@ const EditOrderModal = ({
                       />
                     }
                     sx={{ "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
-                    label={t("order.secondDriver")}
+                    label={t("order.secondDriver", {
+                      price: secondDriverPriceLabelValue,
+                    })}
                   />
                 </Box>
               </Box>
@@ -1244,7 +1248,9 @@ const EditOrderModal = ({
                     />
                   }
                   sx={{ m: 0, "& .MuiFormControlLabel-label": { fontSize: "0.85rem" } }}
-                  label={t("order.secondDriver")}
+                  label={t("order.secondDriver", {
+                    price: secondDriverPriceLabelValue,
+                  })}
                 />
               </Box>
             )}

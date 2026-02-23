@@ -75,6 +75,7 @@ async function handler(request) {
       createdAt: order.createdAt || order.date,
       updatedAt: order.updatedAt,
       hasConflictDates: order.hasConflictDates || [],
+      IsConfirmedEmailSent: order.IsConfirmedEmailSent ?? false,
     }));
 
     return new Response(

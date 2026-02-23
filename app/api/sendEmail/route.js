@@ -40,6 +40,8 @@ function wrapTextWithSignature(title, text) {
 
 // SMTP transporter with lazy initialization
 let transporter = null;
+const MAX_ATTACHMENT_BYTES = 7 * 1024 * 1024;
+const MAX_ATTACHMENTS = 3;
 
 function getTransporter() {
   if (!transporter) {
@@ -64,6 +66,40 @@ function getTransporter() {
   }
 
   return transporter;
+}
+
+function parseAttachments(rawAttachments) {
+  if (!Array.isArray(rawAttachments) || rawAttachments.length === 0) {
+    return [];
+  }
+
+  const attachments = [];
+  for (const item of rawAttachments.slice(0, MAX_ATTACHMENTS)) {
+    if (!item || typeof item !== "object") continue;
+
+    const filename =
+      typeof item.filename === "string" ? item.filename.trim() : "";
+    const contentBase64 =
+      typeof item.contentBase64 === "string" ? item.contentBase64.trim() : "";
+    if (!filename || !contentBase64) continue;
+
+    const content = Buffer.from(contentBase64, "base64");
+    if (!content || content.length === 0 || content.length > MAX_ATTACHMENT_BYTES) {
+      continue;
+    }
+
+    attachments.push({
+      filename,
+      content,
+      contentType:
+        typeof item.contentType === "string" && item.contentType.trim()
+          ? item.contentType.trim()
+          : undefined,
+      disposition: "attachment",
+    });
+  }
+
+  return attachments;
 }
 
 // Use centralized developer email from config
@@ -95,6 +131,7 @@ export async function POST(request) {
       to: bodyTo,
       cc: bodyCc,
       replyTo: bodyReplyTo,
+      attachments: bodyAttachments,
       email,
       message,
     } = body;
@@ -102,6 +139,7 @@ export async function POST(request) {
     const text = bodyText != null ? bodyText : message;
     const useNotificationRecipients = Array.isArray(bodyTo) && bodyTo.length > 0;
     const actualCustomerEmail = isTestingMode ? null : email;
+    const parsedAttachments = parseAttachments(bodyAttachments);
 
     console.log("Email request:", {
       companyEmail: COMPANY_EMAIL,
@@ -109,6 +147,7 @@ export async function POST(request) {
       subject: title,
       hasText: !!text,
       hasHtml: !!bodyHtml,
+      attachmentsCount: parsedAttachments.length,
       testingMode: isTestingMode,
       useNotificationRecipients: !!useNotificationRecipients,
     });
@@ -152,6 +191,7 @@ export async function POST(request) {
       subject: emailSubject,
       text: finalText,
       html: finalHtml,
+      attachments: parsedAttachments.length > 0 ? parsedAttachments : undefined,
     };
 
     console.log("Sending email with mailOptions:", {

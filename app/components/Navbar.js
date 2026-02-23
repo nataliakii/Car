@@ -189,6 +189,7 @@ export default function NavBar({
   const [selectedDiscount, setSelectedDiscount] = useState(0);
   const [discountStartDate, setDiscountStartDate] = useState(null);
   const [discountEndDate, setDiscountEndDate] = useState(null);
+  const [isSendingConfirmation, setIsSendingConfirmation] = useState(false);
 
   const { i18n, t } = useTranslation();
 
@@ -410,6 +411,81 @@ export default function NavBar({
   };
   
   const discountButtonLabel = getDiscountButtonLabel();
+  const adminNavLinkSx = {
+    px: { md: 1.1, lg: 1.8 },
+    fontSize: { md: 12, lg: 14 },
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+    lineHeight: 1.1,
+  };
+  const adminActionButtonSx = {
+    px: { md: 1, lg: 1.6 },
+    minWidth: "auto",
+    fontSize: { md: 11, lg: 12.5 },
+    textTransform: "uppercase",
+    color: "white",
+    borderColor: "white",
+    whiteSpace: "nowrap",
+    "&:hover": {
+      borderColor: "white",
+      backgroundColor: "rgba(255, 255, 255, 0.1)",
+    },
+  };
+  const compactButtonTextSx = {
+    display: "block",
+    maxWidth: { md: 130, lg: 220 },
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  };
+
+  const handleSendManualConfirmation = async () => {
+    if (isSendingConfirmation) return;
+    if (!isAdmin || adminRole !== ROLE.SUPERADMIN) return;
+
+    const orderIdInput = window.prompt("Введите orderId заказа");
+    if (orderIdInput === null) return;
+    const orderId = orderIdInput.trim();
+    if (!orderId) {
+      window.alert("orderId обязателен");
+      return;
+    }
+
+    const localeInput = window.prompt(
+      "Введите язык письма (en, ru, el, de, bg, ro, sr)",
+      (lang || "en").toLowerCase()
+    );
+    if (localeInput === null) return;
+    const locale = localeInput.trim().toLowerCase();
+    if (!LANG_LABELS[locale]) {
+      window.alert("Неподдерживаемый язык. Допустимо: en, ru, el, de, bg, ro, sr");
+      return;
+    }
+
+    setIsSendingConfirmation(true);
+    try {
+      const response = await fetch("/api/admin/orders/send-confirmation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ orderId, locale }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.message || `HTTP ${response.status}`);
+      }
+
+      window.alert(`Письмо отправлено: ${data?.sentTo || "ok"}`);
+    } catch (error) {
+      window.alert(
+        `Ошибка отправки: ${error?.message || "не удалось отправить письмо"}`
+      );
+    } finally {
+      setIsSendingConfirmation(false);
+    }
+  };
 
   return (
     <>
@@ -564,7 +640,7 @@ export default function NavBar({
 
               <Stack
                 direction="row"
-                spacing={2}
+                spacing={{ md: 0.8, lg: 1.5 }}
                 alignItems="center"
                 sx={{
                   display: { xs: "none", md: "flex" },
@@ -610,11 +686,7 @@ export default function NavBar({
                   <>
                     <Link href="/admin/cars">
                       <Typography
-                        sx={{
-                          px: { xs: 0.5, md: 3 },
-                          fontSize: { xs: 11, md: 15 },
-                          textTransform: "uppercase",
-                        }}
+                        sx={adminNavLinkSx}
                       >
                         {t("header.cars")}
                       </Typography>
@@ -632,22 +704,14 @@ export default function NavBar({
                     </Link>*/}
                     <Link href="/admin/orders-calendar">
                       <Typography
-                        sx={{
-                          px: { xs: 0.5, md: 3 },
-                          fontSize: { xs: 11, md: 15 },
-                          textTransform: "uppercase",
-                        }}
+                        sx={adminNavLinkSx}
                       >
                         {t("header.calendar")}
                       </Typography>
                     </Link>
                     <Link href="/admin/orders">
                       <Typography
-                        sx={{
-                          px: { xs: 0.5, md: 3 },
-                          fontSize: { xs: 11, md: 15 },
-                          textTransform: "uppercase",
-                        }}
+                        sx={adminNavLinkSx}
                       >
                         {t("header.table")}
                       </Typography>
@@ -659,19 +723,25 @@ export default function NavBar({
                   <Button
                     variant="outlined"
                     onClick={() => setDiscountModalOpen(true)}
-                    sx={{
-                      px: { xs: 0.5, md: 3 },
-                      fontSize: { xs: 11, md: 13 },
-                      textTransform: "uppercase",
-                      color: "white",
-                      borderColor: "white",
-                      "&:hover": {
-                        borderColor: "white",
-                        backgroundColor: "rgba(255, 255, 255, 0.1)",
-                      },
-                    }}
+                    sx={adminActionButtonSx}
                   >
-                    {discountButtonLabel}
+                    <Box component="span" sx={compactButtonTextSx}>
+                      {discountButtonLabel}
+                    </Box>
+                  </Button>
+                )}
+                {isAdmin && adminRole === ROLE.SUPERADMIN && (
+                  <Button
+                    variant="outlined"
+                    onClick={handleSendManualConfirmation}
+                    disabled={isSendingConfirmation}
+                    sx={adminActionButtonSx}
+                  >
+                    <Box component="span" sx={compactButtonTextSx}>
+                      {isSendingConfirmation
+                        ? "Отправка..."
+                        : "Выслать подтверждение"}
+                    </Box>
                   </Button>
                 )}
               </Stack>
@@ -907,6 +977,24 @@ export default function NavBar({
                     }}
                   >
                     <ListItemText primary={discountButtonLabel} />
+                  </ListItem>
+                )}
+                {isAdmin && adminRole === ROLE.SUPERADMIN && (
+                  <ListItem
+                    button
+                    disabled={isSendingConfirmation}
+                    onClick={() => {
+                      setDrawerOpen(false);
+                      handleSendManualConfirmation();
+                    }}
+                  >
+                    <ListItemText
+                      primary={
+                        isSendingConfirmation
+                          ? "Отправка..."
+                          : "Выслать подтверждение"
+                      }
+                    />
                   </ListItem>
                 )}
               </>

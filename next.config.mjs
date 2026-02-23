@@ -12,6 +12,10 @@ const nextConfig = {
   env: {
     NEXT_LOCAL_API_BASE_URL: "http://localhost:3025",
     NEXT_PUBLIC_API_BASE_URL: "https://natali-cars.com/",
+    NEXT_PUBLIC_SECOND_DRIVER_PRICE_PER_DAY:
+      process.env.SECOND_DRIVER_PRICE_PER_DAY ||
+      process.env.NEXT_PUBLIC_SECOND_DRIVER_PRICE_PER_DAY ||
+      "5",
   },
   // Canonical domain redirect: www → non-www (SEO + CORS fix)
   async redirects() {

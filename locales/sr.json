@@ -68,7 +68,7 @@
     "yourName": "Vaše ime",
     "phone": "Broj telefona",
     "email": "Email",
-    "secondDriver": "Drugi vozač (5 €/dan)",
+    "secondDriver": "Drugi vozač ({{price}} €/dan)",
     "thank": "Hvala vam na rezervaciji!",
     "daysNumber": "Broj dana:",
     "price": "Ukupna cena:",

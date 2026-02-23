@@ -1119,6 +1119,20 @@ export default function OrdersTableSection() {
                               color: palette.neutral.gray600,
                             }}
                           />
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontSize: "0.65rem",
+                              lineHeight: 1.1,
+                              color: order.IsConfirmedEmailSent
+                                ? palette.status.success
+                                : palette.neutral.gray500,
+                            }}
+                          >
+                            {`Email sent: ${
+                              order.IsConfirmedEmailSent ? "true" : "false"
+                            }`}
+                          </Typography>
                           {isBlocked && (
                             <Tooltip title={isBlocked}>
                               <BlockIcon 

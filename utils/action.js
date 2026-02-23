@@ -22,7 +22,7 @@ export const API_URL = RAW_API_URL
  * Get API URL that works both on server and client
  * - Client-side: returns relative path (avoids CORS issues)
  * - Server-side: returns absolute URL (required for Server Components)
- * 
+ *
  * @param {string} path - API path starting with /api/...
  * @returns {string} Full URL for server, relative path for client
  */
@@ -31,7 +31,7 @@ export function getApiUrl(path) {
   if (typeof window !== "undefined") {
     return path;
   }
-  
+
   // Server-side: need absolute URL
   // API_URL comes from NEXT_PUBLIC_API_BASE_URL (set in next.config.mjs)
   // In development: http://localhost:3000
@@ -40,7 +40,7 @@ export function getApiUrl(path) {
     console.warn("[getApiUrl] API_URL is not set, using localhost fallback");
   }
   const baseUrl = API_URL || "http://localhost:3000";
-  
+
   return `${baseUrl}${path}`;
 }
 
@@ -69,10 +69,13 @@ export const fetchCar = async (id) => {
 /** Fetch a single car by slug (SEO-friendly URL). */
 export const fetchCarBySlug = async (slug) => {
   try {
-    const response = await fetch(getApiUrl(`/api/car/slug/${encodeURIComponent(slug)}`), {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
+    const response = await fetch(
+      getApiUrl(`/api/car/slug/${encodeURIComponent(slug)}`),
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
     if (response.status === 404) throw new Error("Car not found");
     const data = await response.json();
     return data;
@@ -111,21 +114,38 @@ export const fetchAll = async () => {
 };
 
 // Fetch all cars using fetch
-// Используем кеширование для статических данных (revalidate: 600 секунд = 10 минут)
-export const fetchAllCars = async () => {
+// По умолчанию используем кеширование (revalidate: 600 секунд = 10 минут).
+// Для мгновенно-актуальных данных (админка/оперативный UI) передавайте { skipCache: true }.
+export const fetchAllCars = async (options = {}) => {
   try {
-    const response = await fetch(getApiUrl(`/api/car/all`), {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      // Кеширование: данные обновляются каждые 10 минут
-      next: { revalidate: 600 },
-    });
+    const skipCache = Boolean(options?.skipCache);
+    const response = await fetch(
+      getApiUrl(`/api/car/all`),
+      skipCache
+        ? {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
+              Pragma: "no-cache",
+            },
+            cache: "no-store",
+          }
+        : {
+            method: "GET",
+            cache: "force-cache",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            // Кеширование: данные обновляются каждые 20 минут
+            next: { revalidate: 1200, tags: ["cars"] },
+          }
+    );
     if (!response.ok) {
       const body = await response.text().catch(() => "<no body>");
       console.error("Fetch /api/car/all failed", {
-        apiUrl,
+        url: getApiUrl(`/api/car/all`),
+        skipCache,
         status: response.status,
         body,
       });
@@ -257,11 +277,10 @@ export const fetchOrdersByCar = async (carId) => {
   }
 };
 
-
 // UPDATE 0. action for moving order to another car (ADMIN and SUPERADMIN allowed)
 /**
  * Move order to another car
- * 
+ *
  * @param {string} orderId - Order ID
  * @param {string} newCarId - New car ID
  * @param {string} newCarNumber - New car number
@@ -378,7 +397,9 @@ export const changeRentalDates = async (
       // Handle permission denied (protected order)
       return {
         status: 403,
-        message: data.message || "Permission denied: Only superadmin can modify this order",
+        message:
+          data.message ||
+          "Permission denied: Only superadmin can modify this order",
         code: data.code || "PERMISSION_DENIED",
       };
     } else if (response.status === 401) {
@@ -421,14 +442,17 @@ export const changeRentalDates = async (
  */
 export const toggleConfirmedStatus = async (orderId) => {
   try {
-    const response = await fetch(getApiUrl(`/api/order/update/switchConfirm/${orderId}`), {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-      credentials: "include",
-    });
+    const response = await fetch(
+      getApiUrl(`/api/order/update/switchConfirm/${orderId}`),
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        credentials: "include",
+      }
+    );
 
     const data = await response.json();
 
@@ -457,7 +481,9 @@ export const toggleConfirmedStatus = async (orderId) => {
     if (response.status === 403) {
       return {
         success: false,
-        message: data.message || "Permission denied: Only superadmin can modify this order",
+        message:
+          data.message ||
+          "Permission denied: Only superadmin can modify this order",
         level: "block",
         code: data.code || "PERMISSION_DENIED",
       };
@@ -499,7 +525,9 @@ export const updateCustomerInfo = async (orderId, updateData) => {
 
   // Handle permission denied (403)
   if (response.status === 403) {
-    throw new Error(data.message || "Permission denied: Only superadmin can modify this order");
+    throw new Error(
+      data.message || "Permission denied: Only superadmin can modify this order"
+    );
   }
 
   if (!response.ok) {
@@ -511,7 +539,7 @@ export const updateCustomerInfo = async (orderId, updateData) => {
 
 /**
  * Unified order update action - single source of truth for all order updates
- * 
+ *
  * @param {string} orderId - The order ID to update
  * @param {Object} payload - Partial update payload with any order fields:
  *   - rentalStartDate?, rentalEndDate?, timeIn?, timeOut?
@@ -520,7 +548,7 @@ export const updateCustomerInfo = async (orderId, updateData) => {
  *   - totalPrice?, numberOfDays?
  *   - customerName?, phone?, email?, flightNumber?
  *   - confirmed?
- * 
+ *
  * @returns {Promise<Object>} Response object with status, message, updatedOrder, etc.
  */
 export const updateOrder = async (orderId, payload) => {
@@ -608,9 +636,9 @@ export const updateOrder = async (orderId, payload) => {
 // UPDATE 4. Inline order update action (for table inline editing)
 /**
  * Update order fields inline (supports customer info, dates, and times)
- * 
+ *
  * @param {string} orderId - Order ID
- * @param {Object} fields - Fields to update: 
+ * @param {Object} fields - Fields to update:
  *   - Customer: { customerName?, phone?, email?, flightNumber? }
  *   - Dates/Times: { rentalStartDate?, rentalEndDate?, timeIn?, timeOut? }
  * @returns {Promise<Object>} Normalized response with updated order
@@ -662,7 +690,7 @@ export const updateOrderInline = async (orderId, fields) => {
   // changeDates endpoint returns { data: order } or { updatedOrder: order }
   // customer endpoint returns { updatedOrder: order }
   const updatedOrder = data.data || data.updatedOrder || data;
-  
+
   return {
     success: true,
     data: updatedOrder,
@@ -677,7 +705,7 @@ export const updateOrderInline = async (orderId, fields) => {
 // UPDATE 5. Inline confirmation toggle action
 /**
  * Toggle order confirmation status inline
- * 
+ *
  * @param {string} orderId - Order ID
  * @returns {Promise<{ success: boolean, updatedOrder: Object|null, level: string|null, message: string }>}
  *   - success: true if toggle succeeded, false if blocked/denied (403/409)
@@ -687,14 +715,17 @@ export const updateOrderInline = async (orderId, fields) => {
  * @throws {Error} if request fails (network error, 500, etc.)
  */
 export const updateOrderConfirmation = async (orderId) => {
-  const response = await fetch(getApiUrl(`/api/order/update/switchConfirm/${orderId}`), {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    cache: "no-store",
-    credentials: "include",
-  });
+  const response = await fetch(
+    getApiUrl(`/api/order/update/switchConfirm/${orderId}`),
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+      credentials: "include",
+    }
+  );
 
   const data = await response.json();
 
@@ -846,22 +877,23 @@ export async function fetchCompany(companyId, options = {}) {
   try {
     const skipCache = Boolean(options.skipCache);
     const cacheBuster = skipCache ? `?ts=${Date.now()}` : "";
-    const response = await fetch(getApiUrl(`/api/company/${companyId}${cacheBuster}`), {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        ...(skipCache
-          ? {
-              "Cache-Control":
-                "no-cache, no-store, max-age=0, must-revalidate",
-              Pragma: "no-cache",
-            }
-          : {}),
-      },
-      ...(skipCache
-        ? { cache: "no-store" }
-        : { next: { revalidate: 3600 } }),
-    });
+    const response = await fetch(
+      getApiUrl(`/api/company/${companyId}${cacheBuster}`),
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...(skipCache
+            ? {
+                "Cache-Control":
+                  "no-cache, no-store, max-age=0, must-revalidate",
+                Pragma: "no-cache",
+              }
+            : {}),
+        },
+        ...(skipCache ? { cache: "no-store" } : { next: { revalidate: 3600 } }),
+      }
+    );
 
     if (response.status === 404) {
       throw new Error("Company not found");
@@ -889,12 +921,22 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
     }
 
     const bufferTimeNumber = Number(bufferTime);
-    if (isNaN(bufferTimeNumber) || bufferTimeNumber < 0 || bufferTimeNumber > 24) {
-      return { success: false, error: "bufferTime must be a number between 0 and 24 hours" };
+    if (
+      isNaN(bufferTimeNumber) ||
+      bufferTimeNumber < 0 ||
+      bufferTimeNumber > 24
+    ) {
+      return {
+        success: false,
+        error: "bufferTime must be a number between 0 and 24 hours",
+      };
     }
 
     const path = `/api/company/buffer/${String(companyId)}`;
-    const url = typeof window !== "undefined" ? `${window.location.origin}${path}` : getApiUrl(path);
+    const url =
+      typeof window !== "undefined"
+        ? `${window.location.origin}${path}`
+        : getApiUrl(path);
     const response = await fetch(url, {
       method: "PUT",
       headers: {
@@ -913,7 +955,10 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
     }
 
     if (!response.ok) {
-      return { success: false, error: data?.error || "Failed to update buffer" };
+      return {
+        success: false,
+        error: data?.error || "Failed to update buffer",
+      };
     }
 
     return { success: true, data: data.data };
@@ -922,9 +967,10 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
     const message = error.message || "Network error";
     return {
       success: false,
-      error: message === "Failed to fetch"
-        ? "Нет связи с сервером. Проверьте интернет или откройте страницу заново."
-        : message,
+      error:
+        message === "Failed to fetch"
+          ? "Нет связи с сервером. Проверьте интернет или откройте страницу заново."
+          : message,
     };
   }
 }
@@ -941,15 +987,26 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
  * @param {boolean} options.secondDriver - Whether second driver is enabled
  * @returns {Promise<{totalPrice: number, days: number, ok: boolean}>}
  */
-export async function calculateTotalPrice(carNumber, rentalStartDate, rentalEndDate, kacko = "TPL", childSeats = 0, options = {}) {
+export async function calculateTotalPrice(
+  carNumber,
+  rentalStartDate,
+  rentalEndDate,
+  kacko = "TPL",
+  childSeats = 0,
+  options = {}
+) {
   try {
     const normalizedOptions =
-      options && typeof options === "object" && !Array.isArray(options) ? options : {};
+      options && typeof options === "object" && !Array.isArray(options)
+        ? options
+        : {};
     const normalizedSecondDriver =
       normalizedOptions.secondDriver === true ||
       normalizedOptions.secondDriver === 1 ||
       (typeof normalizedOptions.secondDriver === "string" &&
-        ["true", "1"].includes(normalizedOptions.secondDriver.trim().toLowerCase()));
+        ["true", "1"].includes(
+          normalizedOptions.secondDriver.trim().toLowerCase()
+        ));
 
     const fetchOptions = {
       method: "POST",
@@ -972,7 +1029,10 @@ export async function calculateTotalPrice(carNumber, rentalStartDate, rentalEndD
       fetchOptions.signal = normalizedOptions.signal;
     }
 
-    const response = await fetch(getApiUrl(`/api/order/calcTotalPrice`), fetchOptions);
+    const response = await fetch(
+      getApiUrl(`/api/order/calcTotalPrice`),
+      fetchOptions
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -1029,7 +1089,9 @@ export async function deleteOrder(orderId) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Error ${response.status}: Failed to delete order`);
+      throw new Error(
+        errorData.message || `Error ${response.status}: Failed to delete order`
+      );
     }
 
     const data = await response.json().catch(() => ({ success: true }));
@@ -1047,12 +1109,15 @@ export async function deleteOrder(orderId) {
  */
 function normalizeApiUrl(url) {
   if (!url) return "";
-  return String(url).trim().replace(/\/+$/, "").replace(/([^:]\/)\/+/g, "$1");
+  return String(url)
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/([^:]\/)\/+/g, "$1");
 }
 
 /**
  * Fetch legal document from AWS API with ETag caching
- * 
+ *
  * @typedef {Object} LegalDocResponse
  * @property {number} version - Document version
  * @property {string} updatedAt - ISO timestamp
@@ -1061,7 +1126,7 @@ function normalizeApiUrl(url) {
  * @property {"EU"|"IE"|"UA"} content.jurisdiction - Jurisdiction code
  * @property {Array<{id: string, text: string}>} content.sections - Document sections
  * @property {boolean} [stale] - True if data came from cache due to API failure
- * 
+ *
  * @param {Object} options
  * @param {"privacy-policy"|"terms-of-service"|"cookie-policy"} options.docType - Document type
  * @param {string} [options.lang="en"] - Language code
@@ -1073,7 +1138,9 @@ export async function getLegalDoc({ docType, lang = "en", jur = "EU" }) {
   // Validate docType
   const validDocTypes = ["privacy-policy", "terms-of-service", "cookie-policy"];
   if (!validDocTypes.includes(docType)) {
-    throw new Error(`Invalid docType: ${docType}. Must be one of: ${validDocTypes.join(", ")}`);
+    throw new Error(
+      `Invalid docType: ${docType}. Must be one of: ${validDocTypes.join(", ")}`
+    );
   }
 
   // Get API base URL from env
@@ -1156,11 +1223,16 @@ export async function getLegalDoc({ docType, lang = "en", jur = "EU" }) {
     }
 
     // Handle other status codes
-    throw new Error(`API returned status ${response.status}: ${response.statusText}`);
+    throw new Error(
+      `API returned status ${response.status}: ${response.statusText}`
+    );
   } catch (error) {
     // If API fails but we have cached data, return it with stale flag
     if (cachedData?.data) {
-      console.warn(`Legal API failed for ${docType}, using cached data:`, error.message);
+      console.warn(
+        `Legal API failed for ${docType}, using cached data:`,
+        error.message
+      );
       return {
         ...cachedData.data,
         stale: true,
@@ -1278,8 +1350,10 @@ function formatOrderTelegramMessage(type, order, deletedBy) {
 
   // Car information
   if (order.car) {
-    const carInfo = order.car.model 
-      ? `${order.car.model}${order.car.regNumber ? ` (${order.car.regNumber})` : ""}`
+    const carInfo = order.car.model
+      ? `${order.car.model}${
+          order.car.regNumber ? ` (${order.car.regNumber})` : ""
+        }`
       : order.car;
     lines.push(`🚗 Car: ${carInfo}`);
   }
@@ -1322,13 +1396,18 @@ export async function sendTelegramMessage(message) {
   const chatId = process.env.TELEGRAM_CHAT_ID;
 
   if (!chatId) {
-    console.error("[Telegram] TELEGRAM_CHAT_ID is not configured in environment variables");
+    console.error(
+      "[Telegram] TELEGRAM_CHAT_ID is not configured in environment variables"
+    );
     return false;
   }
 
   const chatIdNumber = parseInt(chatId, 10);
   if (isNaN(chatIdNumber)) {
-    console.error("[Telegram] TELEGRAM_CHAT_ID must be a valid number, got:", chatId);
+    console.error(
+      "[Telegram] TELEGRAM_CHAT_ID must be a valid number, got:",
+      chatId
+    );
     return false;
   }
 
@@ -1347,7 +1426,11 @@ export async function sendTelegramMessage(message) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error("[Telegram] API returned error status:", response.status, errorData.error || "Unknown error");
+      console.error(
+        "[Telegram] API returned error status:",
+        response.status,
+        errorData.error || "Unknown error"
+      );
       return false;
     }
 
@@ -1361,14 +1444,17 @@ export async function sendTelegramMessage(message) {
     return true;
   } catch (error) {
     // Log error but don't throw - Telegram notifications must never break core flows
-    console.error("[Telegram] Failed to send message:", error.message || "Unknown error");
+    console.error(
+      "[Telegram] Failed to send message:",
+      error.message || "Unknown error"
+    );
     return false;
   }
 }
 
 /**
  * Sends a Telegram notification when a new order is created
- * 
+ *
  * @param {Object} order - Order data
  * @param {string|number} order.id - Order ID or number
  * @param {string} order.startDate - Rental start date (ISO string)
@@ -1383,7 +1469,7 @@ export async function sendTelegramMessage(message) {
  * @param {string} [order.customer.phone] - Customer phone
  * @param {string} [order.customer.email] - Customer email
  * @returns {Promise<boolean>} True if sent successfully, false otherwise
- * 
+ *
  * @example
  * await sendNewOrderTelegramNotification({
  *   id: '1234',
@@ -1417,7 +1503,7 @@ export async function sendNewOrderTelegramNotification(order) {
 
 /**
  * Sends a Telegram notification when an order is deleted
- * 
+ *
  * @param {Object} order - Order data
  * @param {string|number} order.id - Order ID or number
  * @param {string} order.startDate - Rental start date (ISO string)
@@ -1433,7 +1519,7 @@ export async function sendNewOrderTelegramNotification(order) {
  * @param {string} [order.customer.email] - Customer email
  * @param {string} deletedBy - Email or identifier of who deleted the order
  * @returns {Promise<boolean>} True if sent successfully, false otherwise
- * 
+ *
  * @example
  * await sendOrderDeletedTelegramNotification({
  *   id: '1234',
@@ -1445,7 +1531,7 @@ export async function sendNewOrderTelegramNotification(order) {
  *     model: 'Toyota Yaris',
  *     regNumber: 'XYZ-1234'
  *   },
- *   customer: { 
+ *   customer: {
  *     name: 'John Doe',
  *     phone: '+353...',
  *     email: 'john@email.com'
@@ -1456,13 +1542,18 @@ export async function sendOrderDeletedTelegramNotification(order, deletedBy) {
   // Validate order
   const validationError = validateOrderForTelegram(order);
   if (validationError) {
-    console.error("[Telegram] Order deleted notification failed:", validationError);
+    console.error(
+      "[Telegram] Order deleted notification failed:",
+      validationError
+    );
     return false;
   }
 
   // Validate deletedBy
   if (!deletedBy || typeof deletedBy !== "string" || deletedBy.trim() === "") {
-    console.error("[Telegram] Order deleted notification failed: deletedBy is required");
+    console.error(
+      "[Telegram] Order deleted notification failed: deletedBy is required"
+    );
     return false;
   }
 

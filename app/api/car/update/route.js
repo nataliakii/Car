@@ -1,6 +1,6 @@
 import { Car } from "@models/car";
 import { connectToDB } from "@utils/database";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import dayjs from "dayjs";
 
 export const PUT = async (req) => {
@@ -26,6 +26,7 @@ export const PUT = async (req) => {
     }
     
     // Инвалидируем кеш для списка машин и конкретной машины
+    revalidateTag("cars");
     revalidatePath("/api/car/all");
     revalidatePath(`/api/car/${_id}`);
     
