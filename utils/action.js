@@ -985,6 +985,8 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
  * @param {Object} options - Optional settings
  * @param {AbortSignal} options.signal - AbortController signal for cancellation
  * @param {boolean} options.secondDriver - Whether second driver is enabled
+ * @param {Date|string} [options.timeIn] - Exact pickup datetime (optional)
+ * @param {Date|string} [options.timeOut] - Exact return datetime (optional)
  * @returns {Promise<{totalPrice: number, days: number, ok: boolean}>}
  */
 export async function calculateTotalPrice(
@@ -1007,6 +1009,14 @@ export async function calculateTotalPrice(
         ["true", "1"].includes(
           normalizedOptions.secondDriver.trim().toLowerCase()
         ));
+    const normalizedTimeIn =
+      normalizedOptions.timeIn !== undefined && normalizedOptions.timeIn !== null
+        ? normalizedOptions.timeIn
+        : undefined;
+    const normalizedTimeOut =
+      normalizedOptions.timeOut !== undefined && normalizedOptions.timeOut !== null
+        ? normalizedOptions.timeOut
+        : undefined;
 
     const fetchOptions = {
       method: "POST",
@@ -1018,6 +1028,8 @@ export async function calculateTotalPrice(
         carNumber: carIdentifier, // legacy fallback
         rentalStartDate,
         rentalEndDate,
+        timeIn: normalizedTimeIn,
+        timeOut: normalizedTimeOut,
         kacko,
         childSeats,
         secondDriver: normalizedSecondDriver,

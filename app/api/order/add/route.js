@@ -20,6 +20,10 @@ import {
   checkConflicts,
 } from "@utils/analyzeDates";
 import { notifyOrderAction } from "@/domain/orders/orderNotificationDispatcher";
+import {
+  getBusinessRentalDaysByMinutes,
+  toBusinessDateTime,
+} from "@/domain/orders/numberOfDays";
 import { orderGuard } from "@/middleware/orderGuard";
 
 dayjs.extend(utc);
@@ -113,8 +117,8 @@ async function postOrderAddHandler(request) {
     // This prevents browser timezone from shifting rental dates during submit.
     const startDateSource = timeIn || rentalStartDate;
     const endDateSource = timeOut || rentalEndDate;
-    const startDate = toBusinessStartOfDay(startDateSource);
-    const endDate = toBusinessStartOfDay(endDateSource);
+    const startDate = toBusinessDateTime(startDateSource);
+    const endDate = toBusinessDateTime(endDateSource);
 
     if (!startDate.isValid() || !endDate.isValid()) {
       return new Response(
@@ -128,8 +132,7 @@ async function postOrderAddHandler(request) {
       );
     }
 
-    // status 405 for startdate = enddate - order NOT created
-    if (startDate.isSame(endDate, "day")) {
+    if (getBusinessRentalDaysByMinutes(startDate, endDate) <= 0) {
       return new Response(
         JSON.stringify({
           message: "Start and End dates could't be at the same date",

@@ -25,12 +25,17 @@ export const CLIENT_PRIVATE_FIELDS = [
   "Telegram",
 ];
 
+const CLIENT_PRIVATE_META_FIELDS = ["confirmationEmailHistory"];
+
 /**
  * Удаляет PII из заказа
  */
 function stripPII(order) {
   const clean = { ...order };
   for (const field of CLIENT_PRIVATE_FIELDS) {
+    delete clean[field];
+  }
+  for (const field of CLIENT_PRIVATE_META_FIELDS) {
     delete clean[field];
   }
   clean._visibility = {

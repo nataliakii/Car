@@ -1,17 +1,30 @@
 import { Schema, model, models } from "mongoose";
 import { seasons } from "@utils/companyData";
-import { getSecondDriverPricePerDay } from "@utils/secondDriverPricing";
 import { CAR_CLASSES, TRANSMISSION_TYPES, FUEL_TYPES } from "./enums";
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import {
+  getBusinessRentalDaysByMinutes,
+  toBusinessDateTime,
+} from "@/domain/orders/numberOfDays";
 dayjs.extend(isBetween);
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
 const BUSINESS_TZ = "Europe/Athens";
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const DEFAULT_SECOND_DRIVER_PRICE_PER_DAY = 5;
+
+function getSecondDriverPricePerDay() {
+  const raw = process.env.SECOND_DRIVER_PRICE_PER_DAY;
+  const parsed = Number(raw);
+  if (Number.isFinite(parsed) && parsed >= 0) {
+    return parsed;
+  }
+  return DEFAULT_SECOND_DRIVER_PRICE_PER_DAY;
+}
 
 function parseDateInBusinessTz(value) {
   if (value == null) return null;
@@ -254,12 +267,12 @@ CarSchema.methods.calculateTotalRentalPricePerDay = async function (
     PriceKacko: this.PriceKacko,
     PriceChildSeats: this.PriceChildSeats,
   });
-  const dayjsStart = toBusinessStartOfDay(startDate);
-  const dayjsEnd = toBusinessStartOfDay(endDate);
+  const dayjsStart = toBusinessDateTime(startDate);
+  const dayjsEnd = toBusinessDateTime(endDate);
   if (!dayjsStart || !dayjsEnd) {
     throw new Error("Invalid rental start/end date for price calculation");
   }
-  const days = dayjsEnd.diff(dayjsStart, "day");
+  const days = getBusinessRentalDaysByMinutes(dayjsStart, dayjsEnd);
   if (days <= 0) {
     return { total: 0, days: 0 };
   }
@@ -304,7 +317,7 @@ CarSchema.methods.calculateTotalRentalPricePerDay = async function (
         }
       }
     } catch (err) {
-      // Ошибка чтения скидки
+      console.error("Error fetching discount settings:", err);
     }
 
     // 5. Применяем скидку

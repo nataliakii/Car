@@ -230,6 +230,14 @@ export function useEditOrderState({
         // Format dates as YYYY-MM-DD strings (Athens dates)
         const startDateStr = formatDateYYYYMMDD(editedOrder.rentalStartDate);
         const endDateStr = formatDateYYYYMMDD(editedOrder.rentalEndDate);
+        const timeInAthens = startTime
+          ? createAthensDateTime(startDateStr, formatTimeHHMM(startTime))
+          : null;
+        const timeOutAthens = endTime
+          ? createAthensDateTime(endDateStr, formatTimeHHMM(endTime))
+          : null;
+        const timeInServer = timeInAthens ? toServerUTC(timeInAthens) : undefined;
+        const timeOutServer = timeOutAthens ? toServerUTC(timeOutAthens) : undefined;
 
         // DEV log request
         if (process.env.NODE_ENV === "development") {
@@ -237,6 +245,8 @@ export function useEditOrderState({
             carNumber: selectedCar.carNumber,
             rentalStartDate: startDateStr,
             rentalEndDate: endDateStr,
+            timeIn: timeInServer,
+            timeOut: timeOutServer,
             insurance: normalizedInsurance,
             childSeats: normalizedChildSeats,
             secondDriver: normalizedSecondDriver,
@@ -252,6 +262,8 @@ export function useEditOrderState({
           {
             signal: abortController.signal,
             secondDriver: normalizedSecondDriver,
+            timeIn: timeInServer,
+            timeOut: timeOutServer,
           }
         );
 
@@ -329,6 +341,8 @@ export function useEditOrderState({
     selectedCar?.carNumber,
     editedOrder?.rentalStartDate,
     editedOrder?.rentalEndDate,
+    startTime,
+    endTime,
     normalizedInsurance, // Memoized normalized insurance
     normalizedChildSeats, // Memoized normalized ChildSeats
     normalizedSecondDriver, // Memoized normalized secondDriver

@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/adminAuth";
 import { getOrderAccess } from "@/domain/orders/orderAccessPolicy";
 import { getTimeBucket } from "@/domain/time/athensTime";
 import { ROLE } from "@/domain/orders/admin-rbac";
+import { getBusinessRentalDaysByMinutes } from "@/domain/orders/numberOfDays";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -36,9 +37,7 @@ function toStoredBusinessDate(value) {
 }
 
 function getBusinessDaySpan(start, end) {
-  const startDay = toBusinessStartOfDay(start);
-  const endDay = toBusinessStartOfDay(end);
-  return Math.max(0, endDay.diff(startDay, "day"));
+  return getBusinessRentalDaysByMinutes(start, end);
 }
 
 // ИСПРАВЛЕННАЯ функция проверки конфликтов
@@ -248,8 +247,8 @@ export const PUT = async (req) => {
       end: end.toISOString(),
     });
 
-    // Ensure start and end dates are not the same
-    if (start.isSame(end, "day")) {
+    // Ensure rental duration is positive
+    if (getBusinessDaySpan(start, end) <= 0) {
       return new Response(
         JSON.stringify({
           message: "Start and end dates cannot be the same.",
@@ -323,10 +322,13 @@ export const PUT = async (req) => {
           let days202 = getBusinessDaySpan(start, end);
           
           // Check if dates or price-affecting fields changed (not just time)
-          const datesChanged202 = rentalStartDate !== undefined || rentalEndDate !== undefined;
+          const datesChanged202 =
+            rentalStartDate !== undefined || rentalEndDate !== undefined;
+          const timesChanged202 =
+            timeIn !== undefined || timeOut !== undefined;
           const priceAffectingFieldsChanged202 = insurance !== undefined || ChildSeats !== undefined || car !== undefined;
           
-          if (datesChanged202 || priceAffectingFieldsChanged202) {
+          if (datesChanged202 || timesChanged202 || priceAffectingFieldsChanged202) {
             // Only recalculate if dates or price-affecting fields changed
             if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
               const result = await carDoc.calculateTotalRentalPricePerDay(
@@ -340,8 +342,6 @@ export const PUT = async (req) => {
               days202 = result.days;
             }
           }
-          // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
-
           order.rentalStartDate = toStoredBusinessDate(start);
           order.rentalEndDate = toStoredBusinessDate(end);
           order.numberOfDays = days202;
@@ -385,6 +385,7 @@ export const PUT = async (req) => {
     
     // Check if dates or price-affecting fields changed (not just time)
     const datesChanged = rentalStartDate !== undefined || rentalEndDate !== undefined;
+    const timesChanged = timeIn !== undefined || timeOut !== undefined;
     const priceAffectingFieldsChanged = insurance !== undefined || ChildSeats !== undefined || car !== undefined;
     
     if (
@@ -393,7 +394,7 @@ export const PUT = async (req) => {
     ) {
       // Manual price override
       totalPrice = totalPriceFromClient;
-    } else if (datesChanged || priceAffectingFieldsChanged) {
+    } else if (datesChanged || timesChanged || priceAffectingFieldsChanged) {
       // Only recalculate if dates or price-affecting fields changed
       if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
         const result = await carDoc.calculateTotalRentalPricePerDay(
@@ -407,8 +408,6 @@ export const PUT = async (req) => {
         days = result.days;
       }
     }
-    // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
-
     // Update the order
     order.rentalStartDate = toStoredBusinessDate(start);
     order.rentalEndDate = toStoredBusinessDate(end);

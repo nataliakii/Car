@@ -9,6 +9,7 @@ import { checkFieldAccess } from "@/middleware/withOrderAccess";
 import { ROLE } from "@/domain/orders/admin-rbac";
 import { getActionFromChangedFields } from "@/domain/orders/orderNotificationPolicy";
 import { notifyOrderAction } from "@/domain/orders/orderNotificationDispatcher";
+import { getBusinessRentalDaysByMinutes } from "@/domain/orders/numberOfDays";
 import { analyzeConfirmationConflicts } from "@/domain/booking/analyzeConfirmationConflicts";
 import { COMPANY_ID } from "@config/company";
 import dayjs from "dayjs";
@@ -41,9 +42,7 @@ function toStoredBusinessDate(value) {
 }
 
 function getBusinessDaySpan(start, end) {
-  const startDay = toBusinessStartOfDay(start);
-  const endDay = toBusinessStartOfDay(end);
-  return Math.max(0, endDay.diff(startDay, "day"));
+  return getBusinessRentalDaysByMinutes(start, end);
 }
 
 function toBooleanField(value, fallback = false) {
@@ -455,8 +454,8 @@ export const PATCH = async (request, { params }) => {
         });
       }
 
-      // Ensure start and end dates are not the same
-      if (start.isSame(end, "day")) {
+      // Ensure rental duration is positive
+      if (getBusinessDaySpan(start, end) <= 0) {
         return new Response(
           JSON.stringify({
             message: "Start and end dates cannot be the same.",
@@ -554,7 +553,11 @@ export const PATCH = async (request, { params }) => {
             // If isOverridePrice is undefined/null, OverridePrice stays as-is (preserved)
             
             // Check if dates or price-affecting fields changed (not just time)
-            const datesChanged202 = payload.rentalStartDate !== undefined || payload.rentalEndDate !== undefined;
+            const datesChanged202 =
+              payload.rentalStartDate !== undefined ||
+              payload.rentalEndDate !== undefined;
+            const timesChanged202 =
+              payload.timeIn !== undefined || payload.timeOut !== undefined;
             const priceAffectingFieldsChanged202 =
               payload.insurance !== undefined ||
               payload.ChildSeats !== undefined ||
@@ -563,7 +566,7 @@ export const PATCH = async (request, { params }) => {
             
             // Recalculate totalPrice if rental parameters changed
             // This happens REGARDLESS of OverridePrice (totalPrice is always accurate)
-            if (datesChanged202 || priceAffectingFieldsChanged202) {
+            if (datesChanged202 || timesChanged202 || priceAffectingFieldsChanged202) {
               // Only recalculate if dates or price-affecting fields changed
               if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
                 const result = await carDoc.calculateTotalRentalPricePerDay(
@@ -586,8 +589,6 @@ export const PATCH = async (request, { params }) => {
               // If only price changed (not params) and NOT override, update totalPrice
               totalPrice202 = payload.totalPrice;
             }
-            // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
-
             // Restored from pre-refactor conflict logic: Update order fields
             order.rentalStartDate = toStoredBusinessDate(start);
             order.rentalEndDate = toStoredBusinessDate(end);
@@ -672,7 +673,11 @@ export const PATCH = async (request, { params }) => {
       let days = getBusinessDaySpan(start, end);
 
       // Check if dates or price-affecting fields changed (not just time)
-      const datesChanged = payload.rentalStartDate !== undefined || payload.rentalEndDate !== undefined;
+      const datesChanged =
+        payload.rentalStartDate !== undefined ||
+        payload.rentalEndDate !== undefined;
+      const timesChanged =
+        payload.timeIn !== undefined || payload.timeOut !== undefined;
       const priceAffectingFieldsChanged =
         payload.insurance !== undefined ||
         payload.ChildSeats !== undefined ||
@@ -700,7 +705,7 @@ export const PATCH = async (request, { params }) => {
       
       // Recalculate totalPrice if rental parameters changed
       // This happens REGARDLESS of OverridePrice (totalPrice is always accurate)
-      if (datesChanged || priceAffectingFieldsChanged) {
+      if (datesChanged || timesChanged || priceAffectingFieldsChanged) {
         if (carDoc && carDoc.calculateTotalRentalPricePerDay) {
           const result = await carDoc.calculateTotalRentalPricePerDay(
             start,
@@ -723,8 +728,6 @@ export const PATCH = async (request, { params }) => {
         // This handles direct totalPrice updates (legacy or non-override cases)
         totalPrice = payload.totalPrice;
       }
-      // 🔧 FIX: If only time changed (not dates), preserve existing totalPrice and numberOfDays
-
       // Restored from pre-refactor conflict logic: Update order fields
       order.rentalStartDate = toStoredBusinessDate(start);
       order.rentalEndDate = toStoredBusinessDate(end);

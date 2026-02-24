@@ -133,6 +133,22 @@ const BookingModal = ({
       setDaysAndTotal({ days: 0, totalPrice: 0 });
       return;
     }
+    const timeInAthens =
+      startTime && presetDates?.startDate
+        ? createAthensDateTime(
+            dayjs(presetDates.startDate).tz(TIME_ZONE).format("YYYY-MM-DD"),
+            formatTimeHHMM(dayjs(startTime))
+          )
+        : null;
+    const timeOutAthens =
+      endTime && presetDates?.endDate
+        ? createAthensDateTime(
+            dayjs(presetDates.endDate).tz(TIME_ZONE).format("YYYY-MM-DD"),
+            formatTimeHHMM(dayjs(endTime))
+          )
+        : null;
+    const timeInServer = timeInAthens ? toServerUTC(timeInAthens) : undefined;
+    const timeOutServer = timeOutAthens ? toServerUTC(timeOutAthens) : undefined;
     setCalcLoading(true);
     try {
       const result = await calculateTotalPrice(
@@ -141,7 +157,12 @@ const BookingModal = ({
         normalizedEndDate.format("YYYY-MM-DD"),
         insurance,
         childSeats,
-        { signal, secondDriver }
+        {
+          signal,
+          secondDriver,
+          timeIn: timeInServer,
+          timeOut: timeOutServer,
+        }
       );
       if (signal?.aborted) return;
       setDaysAndTotal({ days: result.days, totalPrice: result.totalPrice });
@@ -160,6 +181,8 @@ const BookingModal = ({
     insurance,
     childSeats,
     secondDriver,
+    startTime,
+    endTime,
   ]);
 
   useEffect(() => {

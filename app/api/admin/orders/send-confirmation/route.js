@@ -33,6 +33,98 @@ function normalizeText(value) {
   return String(value).trim();
 }
 
+function normalizeNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function toDateValue(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isSameDateTime(a, b) {
+  const ad = toDateValue(a);
+  const bd = toDateValue(b);
+  if (!ad && !bd) return true;
+  if (!ad || !bd) return false;
+  return ad.getTime() === bd.getTime();
+}
+
+function buildSnapshot(order, effectiveTotalPrice) {
+  return {
+    rentalStartDate: toDateValue(order?.rentalStartDate),
+    rentalEndDate: toDateValue(order?.rentalEndDate),
+    timeIn: toDateValue(order?.timeIn),
+    timeOut: toDateValue(order?.timeOut),
+    totalPrice: normalizeNumber(order?.totalPrice),
+    overridePrice: normalizeNumber(order?.OverridePrice),
+    effectiveTotalPrice: normalizeNumber(effectiveTotalPrice),
+  };
+}
+
+function buildChangesSincePrevious(previousSnapshot, currentSnapshot) {
+  if (!previousSnapshot) {
+    return {
+      hasPrevious: false,
+      hasChanges: false,
+      price: { changed: false, old: null, new: currentSnapshot?.effectiveTotalPrice ?? null },
+      dates: {
+        changed: false,
+        oldStartDate: null,
+        newStartDate: currentSnapshot?.rentalStartDate ?? null,
+        oldEndDate: null,
+        newEndDate: currentSnapshot?.rentalEndDate ?? null,
+      },
+      times: {
+        changed: false,
+        oldTimeIn: null,
+        newTimeIn: currentSnapshot?.timeIn ?? null,
+        oldTimeOut: null,
+        newTimeOut: currentSnapshot?.timeOut ?? null,
+      },
+    };
+  }
+
+  const oldPrice = normalizeNumber(previousSnapshot?.effectiveTotalPrice);
+  const newPrice = normalizeNumber(currentSnapshot?.effectiveTotalPrice);
+  const priceChanged = oldPrice !== newPrice;
+
+  const datesChanged =
+    !isSameDateTime(previousSnapshot?.rentalStartDate, currentSnapshot?.rentalStartDate) ||
+    !isSameDateTime(previousSnapshot?.rentalEndDate, currentSnapshot?.rentalEndDate);
+
+  const timesChanged =
+    !isSameDateTime(previousSnapshot?.timeIn, currentSnapshot?.timeIn) ||
+    !isSameDateTime(previousSnapshot?.timeOut, currentSnapshot?.timeOut);
+
+  return {
+    hasPrevious: true,
+    hasChanges: priceChanged || datesChanged || timesChanged,
+    price: {
+      changed: priceChanged,
+      old: oldPrice,
+      new: newPrice,
+    },
+    dates: {
+      changed: datesChanged,
+      oldStartDate: toDateValue(previousSnapshot?.rentalStartDate),
+      newStartDate: toDateValue(currentSnapshot?.rentalStartDate),
+      oldEndDate: toDateValue(previousSnapshot?.rentalEndDate),
+      newEndDate: toDateValue(currentSnapshot?.rentalEndDate),
+    },
+    times: {
+      changed: timesChanged,
+      oldTimeIn: toDateValue(previousSnapshot?.timeIn),
+      newTimeIn: toDateValue(currentSnapshot?.timeIn),
+      oldTimeOut: toDateValue(previousSnapshot?.timeOut),
+      newTimeOut: toDateValue(currentSnapshot?.timeOut),
+    },
+  };
+}
+
 export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
@@ -112,6 +204,41 @@ export async function POST(request) {
     const meetingContactChannel =
       normalizeText(process.env.ORDER_CONFIRMATION_MEETING_CONTACT_CHANNEL) ||
       DEFAULT_MEETING_CONTACT_CHANNEL;
+    const ccEmail =
+      normalizeEmail(process.env.ORDER_CONFIRMATION_CC_EMAIL) || DEFAULT_CC_EMAIL;
+    const currentSnapshot = buildSnapshot(order, effectiveTotalPrice);
+    const history = Array.isArray(order.confirmationEmailHistory)
+      ? order.confirmationEmailHistory
+      : [];
+    const previousSnapshot = history.length
+      ? history[history.length - 1]?.snapshot
+      : null;
+    const changesSincePrevious = buildChangesSincePrevious(
+      previousSnapshot,
+      currentSnapshot
+    );
+    const sentBy = isSuperAdminSession
+      ? {
+          id: normalizeText(session?.user?.id),
+          name: normalizeText(session?.user?.name),
+          email: normalizeEmail(session?.user?.email),
+          role: String(session?.user?.role ?? ""),
+        }
+      : {
+          id: "",
+          name: "Internal API",
+          email: "",
+          role: "INTERNAL",
+        };
+    const confirmationEmailEvent = {
+      sentAt: new Date(),
+      sentTo: customerEmail,
+      cc: ccEmail,
+      locale,
+      sentBy,
+      snapshot: currentSnapshot,
+      changesSincePrevious,
+    };
 
     const payload = {
       orderId: order._id?.toString?.() || order._id,
@@ -145,8 +272,6 @@ export async function POST(request) {
       renderCustomerOfficialConfirmationEmail(payload);
     const pdfBytes = await buildCustomerOfficialConfirmationPdf(pdfData);
     const pdfBase64 = Buffer.from(pdfBytes).toString("base64");
-    const ccEmail =
-      normalizeEmail(process.env.ORDER_CONFIRMATION_CC_EMAIL) || DEFAULT_CC_EMAIL;
 
     const sendEmailResponse = await fetch(`${new URL(request.url).origin}/api/sendEmail`, {
       method: "POST",
@@ -184,7 +309,10 @@ export async function POST(request) {
 
     const flagUpdateResult = await Order.updateOne(
       { _id: order._id },
-      { $set: { IsConfirmedEmailSent: true } }
+      {
+        $set: { IsConfirmedEmailSent: true },
+        $push: { confirmationEmailHistory: confirmationEmailEvent },
+      }
     );
     if (!flagUpdateResult?.acknowledged || flagUpdateResult?.matchedCount === 0) {
       return NextResponse.json(
@@ -202,6 +330,7 @@ export async function POST(request) {
         orderId,
         locale,
         IsConfirmedEmailSent: true,
+        confirmationEmailEvent,
       },
       { status: 200 }
     );

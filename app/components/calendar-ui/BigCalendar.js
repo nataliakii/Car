@@ -852,17 +852,21 @@ export default function BigCalendar({ cars, showLegend = true }) {
             justifyContent: "center",
             width: "100%",
             height: "100%",
+            overflow: "hidden",
+            p: { xs: 1, sm: 2 },
           }}
         >
           <Grid
             container
-            spacing={1}
+            spacing={selectedOrders.length > 1 ? 1 : 0}
             justifyContent="center"
             onClick={(e) => e.stopPropagation()} // Предотвращаем закрытие при клике на контент
             sx={{
-              maxWidth: "90vw",
-              maxHeight: "90vh",
-              overflow: "auto",
+              width: "100%",
+              maxWidth: { xs: "95vw", sm: "92vw", md: "1100px" },
+              maxHeight: "100%",
+              overflowY: selectedOrders.length > 1 ? "auto" : "visible",
+              overflowX: "hidden",
               "&::-webkit-scrollbar": {
                 width: "4px",
               },

@@ -189,7 +189,6 @@ export default function NavBar({
   const [selectedDiscount, setSelectedDiscount] = useState(0);
   const [discountStartDate, setDiscountStartDate] = useState(null);
   const [discountEndDate, setDiscountEndDate] = useState(null);
-  const [isSendingConfirmation, setIsSendingConfirmation] = useState(false);
 
   const { i18n, t } = useTranslation();
 
@@ -439,54 +438,6 @@ export default function NavBar({
     whiteSpace: "nowrap",
   };
 
-  const handleSendManualConfirmation = async () => {
-    if (isSendingConfirmation) return;
-    if (!isAdmin || adminRole !== ROLE.SUPERADMIN) return;
-
-    const orderIdInput = window.prompt("Введите orderId заказа");
-    if (orderIdInput === null) return;
-    const orderId = orderIdInput.trim();
-    if (!orderId) {
-      window.alert("orderId обязателен");
-      return;
-    }
-
-    const localeInput = window.prompt(
-      "Введите язык письма (en, ru, el, de, bg, ro, sr)",
-      (lang || "en").toLowerCase()
-    );
-    if (localeInput === null) return;
-    const locale = localeInput.trim().toLowerCase();
-    if (!LANG_LABELS[locale]) {
-      window.alert("Неподдерживаемый язык. Допустимо: en, ru, el, de, bg, ro, sr");
-      return;
-    }
-
-    setIsSendingConfirmation(true);
-    try {
-      const response = await fetch("/api/admin/orders/send-confirmation", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ orderId, locale }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data?.message || `HTTP ${response.status}`);
-      }
-
-      window.alert(`Письмо отправлено: ${data?.sentTo || "ok"}`);
-    } catch (error) {
-      window.alert(
-        `Ошибка отправки: ${error?.message || "не удалось отправить письмо"}`
-      );
-    } finally {
-      setIsSendingConfirmation(false);
-    }
-  };
-
   return (
     <>
       <GradientAppBar
@@ -730,20 +681,6 @@ export default function NavBar({
                     </Box>
                   </Button>
                 )}
-                {isAdmin && adminRole === ROLE.SUPERADMIN && (
-                  <Button
-                    variant="outlined"
-                    onClick={handleSendManualConfirmation}
-                    disabled={isSendingConfirmation}
-                    sx={adminActionButtonSx}
-                  >
-                    <Box component="span" sx={compactButtonTextSx}>
-                      {isSendingConfirmation
-                        ? "Отправка..."
-                        : "Выслать подтверждение"}
-                    </Box>
-                  </Button>
-                )}
               </Stack>
             </Stack>
 
@@ -977,24 +914,6 @@ export default function NavBar({
                     }}
                   >
                     <ListItemText primary={discountButtonLabel} />
-                  </ListItem>
-                )}
-                {isAdmin && adminRole === ROLE.SUPERADMIN && (
-                  <ListItem
-                    button
-                    disabled={isSendingConfirmation}
-                    onClick={() => {
-                      setDrawerOpen(false);
-                      handleSendManualConfirmation();
-                    }}
-                  >
-                    <ListItemText
-                      primary={
-                        isSendingConfirmation
-                          ? "Отправка..."
-                          : "Выслать подтверждение"
-                      }
-                    />
                   </ListItem>
                 )}
               </>

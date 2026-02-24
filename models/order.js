@@ -4,8 +4,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 // 🔧 FIX: Import Car model to ensure it's registered before pre-save middleware
 import { Car } from "./car";
-
-const timeZone = "Europe/Athens";
+import { getBusinessRentalDaysByMinutes } from "@/domain/orders/numberOfDays";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -67,6 +66,145 @@ const OrderSchema = new mongoose.Schema({
   IsConfirmedEmailSent: {
     type: Boolean,
     default: false,
+  },
+  confirmationEmailHistory: {
+    type: [
+      {
+        sentAt: {
+          type: Date,
+          default: Date.now,
+        },
+        sentTo: {
+          type: String,
+          default: "",
+        },
+        cc: {
+          type: String,
+          default: "",
+        },
+        locale: {
+          type: String,
+          default: "en",
+        },
+        sentBy: {
+          id: {
+            type: String,
+            default: "",
+          },
+          name: {
+            type: String,
+            default: "",
+          },
+          email: {
+            type: String,
+            default: "",
+          },
+          role: {
+            type: String,
+            default: "",
+          },
+        },
+        snapshot: {
+          rentalStartDate: {
+            type: Date,
+            default: null,
+          },
+          rentalEndDate: {
+            type: Date,
+            default: null,
+          },
+          timeIn: {
+            type: Date,
+            default: null,
+          },
+          timeOut: {
+            type: Date,
+            default: null,
+          },
+          totalPrice: {
+            type: Number,
+            default: null,
+          },
+          overridePrice: {
+            type: Number,
+            default: null,
+          },
+          effectiveTotalPrice: {
+            type: Number,
+            default: null,
+          },
+        },
+        changesSincePrevious: {
+          hasPrevious: {
+            type: Boolean,
+            default: false,
+          },
+          hasChanges: {
+            type: Boolean,
+            default: false,
+          },
+          price: {
+            changed: {
+              type: Boolean,
+              default: false,
+            },
+            old: {
+              type: Number,
+              default: null,
+            },
+            new: {
+              type: Number,
+              default: null,
+            },
+          },
+          dates: {
+            changed: {
+              type: Boolean,
+              default: false,
+            },
+            oldStartDate: {
+              type: Date,
+              default: null,
+            },
+            newStartDate: {
+              type: Date,
+              default: null,
+            },
+            oldEndDate: {
+              type: Date,
+              default: null,
+            },
+            newEndDate: {
+              type: Date,
+              default: null,
+            },
+          },
+          times: {
+            changed: {
+              type: Boolean,
+              default: false,
+            },
+            oldTimeIn: {
+              type: Date,
+              default: null,
+            },
+            newTimeIn: {
+              type: Date,
+              default: null,
+            },
+            oldTimeOut: {
+              type: Date,
+              default: null,
+            },
+            newTimeOut: {
+              type: Date,
+              default: null,
+            },
+          },
+        },
+      },
+    ],
+    default: [],
   },
   hasConflictDates: {
     type: [mongoose.Schema.Types.ObjectId],
@@ -202,12 +340,12 @@ OrderSchema.pre("save", async function (next) {
   // Always use ChildSeats for calculations
   const childSeatsValue = this.ChildSeats ?? this.childSeats ?? 0;
   
-  const rentalStartAthens = dayjs(this.rentalStartDate).tz(timeZone).startOf("day");
-  const rentalEndAthens = dayjs(this.rentalEndDate).tz(timeZone).startOf("day");
-
-  // Count rental days as calendar-day difference in business timezone.
-  const numberOfDays = rentalEndAthens.diff(rentalStartAthens, "day");
-  this.numberOfDays = Math.max(0, numberOfDays);
+  const calculationStart = this.timeIn ?? this.rentalStartDate;
+  const calculationEnd = this.timeOut ?? this.rentalEndDate;
+  this.numberOfDays = getBusinessRentalDaysByMinutes(
+    calculationStart,
+    calculationEnd
+  );
 
   // Fetch car details and calculate price based on the number of days
   // 🔧 FIX: Use imported Car model instead of mongoose.model() to avoid registration errors
@@ -220,8 +358,8 @@ OrderSchema.pre("save", async function (next) {
 
     // Новый алгоритм расчёта итоговой цены
     const { total } = await car.calculateTotalRentalPricePerDay(
-      this.rentalStartDate,
-      this.rentalEndDate,
+      calculationStart,
+      calculationEnd,
       this.insurance,
       childSeatsValue,
       Boolean(this.secondDriver)
@@ -257,6 +395,16 @@ if (Order?.schema && !Order.schema.path("IsConfirmedEmailSent")) {
     IsConfirmedEmailSent: {
       type: Boolean,
       default: false,
+    },
+  });
+}
+
+// HMR/cache safety: ensure confirmationEmailHistory exists on cached model schema.
+if (Order?.schema && !Order.schema.path("confirmationEmailHistory")) {
+  Order.schema.add({
+    confirmationEmailHistory: {
+      type: Array,
+      default: [],
     },
   });
 }

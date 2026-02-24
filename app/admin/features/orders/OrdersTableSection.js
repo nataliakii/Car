@@ -624,7 +624,11 @@ export default function OrdersTableSection() {
         rentalEndDate,
         kacko,
         childSeats,
-        { secondDriver }
+        {
+          secondDriver,
+          timeIn: order.timeIn,
+          timeOut: order.timeOut,
+        }
       );
       
       if (!data.ok) {

@@ -52,6 +52,7 @@ import {
   toServerUTC,
   formatTimeHHMM,
 } from "@/domain/time/athensTime";
+import { getBusinessRentalDaysByMinutes } from "@/domain/orders/numberOfDays";
 import { RenderTextField } from "@/app/components/ui/inputs/Fields";
 
 // Extend dayjs with plugins
@@ -98,6 +99,12 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
   // Состояние для расчета стоимости
   const [daysAndTotal, setDaysAndTotal] = useState({ days: 0, totalPrice: 0 });
   const [calcLoading, setCalcLoading] = useState(false);
+  const [startTime, setStartTime] = useState(
+    dayjs().hour(defaultStartHour).minute(defaultStartMinute)
+  );
+  const [endTime, setEndTime] = useState(
+    dayjs().hour(defaultEndHour).minute(defaultEndMinute)
+  );
 
   // Получение количества дней и общей стоимости через calculateTotalPrice из utils/action
   useEffect(() => {
@@ -110,6 +117,22 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
       }
       setCalcLoading(true);
       try {
+        const timeInAthens =
+          startTime && bookDates.start
+            ? createAthensDateTime(
+                bookDates.start,
+                formatTimeHHMM(dayjs(startTime))
+              )
+            : null;
+        const timeOutAthens =
+          endTime && bookDates.end
+            ? createAthensDateTime(
+                bookDates.end,
+                formatTimeHHMM(dayjs(endTime))
+              )
+            : null;
+        const timeInServer = timeInAthens ? toServerUTC(timeInAthens) : undefined;
+        const timeOutServer = timeOutAthens ? toServerUTC(timeOutAthens) : undefined;
         const result = await calculateTotalPrice(
           carApiIdentifier,
           bookDates.start,
@@ -119,6 +142,8 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
           {
             signal: abortController.signal,
             secondDriver: Boolean(orderDetails.secondDriver),
+            timeIn: timeInServer,
+            timeOut: timeOutServer,
           }
         );
         if (abortController.signal.aborted) return;
@@ -144,6 +169,8 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
     orderDetails.insurance,
     orderDetails.ChildSeats,
     orderDetails.secondDriver,
+    startTime,
+    endTime,
   ]);
 
   // Автоматически подставлять вычисленную стоимость в поле totalPrice
@@ -159,13 +186,6 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
   function normalizeDate(date) {
     return date ? dayjs(date).format("YYYY-MM-DD") : null;
   }
-  const [startTime, setStartTime] = useState(
-    dayjs().hour(defaultStartHour).minute(defaultStartMinute)
-  );
-  const [endTime, setEndTime] = useState(
-    dayjs().hour(defaultEndHour).minute(defaultEndMinute)
-  );
-
   const [loadingState, setLoadingState] = useState(false);
   const [statusMessage, setStatusMessage] = useState({
     type: null,
@@ -898,14 +918,18 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
                 {(() => {
                   let days = daysAndTotal.days;
                   if (bookDates.start && bookDates.end) {
-                    const start = dayjs(bookDates.start);
-                    const end = dayjs(bookDates.end);
-                    const diff = end.diff(start, "day");
-                    if (diff > 0) {
-                      days = diff;
-                    } else {
-                      days = 1;
-                    }
+                    const fallbackStart = createAthensDateTime(
+                      bookDates.start,
+                      formatTimeHHMM(dayjs(startTime))
+                    );
+                    const fallbackEnd = createAthensDateTime(
+                      bookDates.end,
+                      formatTimeHHMM(dayjs(endTime))
+                    );
+                    days = getBusinessRentalDaysByMinutes(
+                      fallbackStart,
+                      fallbackEnd
+                    );
                   }
                   return (
                     <>

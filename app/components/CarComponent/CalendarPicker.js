@@ -21,6 +21,7 @@ import {
   calculateAvailableTimes,
 } from "@utils/functions";
 import { calculateTotalPrice } from "@utils/action";
+import { getBusinessRentalDaysByMinutes } from "@/domain/orders/numberOfDays";
 import { analyzeDates } from "@utils/analyzeDates";
 import Tooltip from "@mui/material/Tooltip";
 import { useTranslation } from "react-i18next";
@@ -121,7 +122,10 @@ const CalendarPicker = ({
   // Передаем просчитанную цену родителю
   useEffect(() => {
     if (onPriceCalculated && totalPrice > 0 && !calcLoading && selectedRange[0] && selectedRange[1]) {
-      const days = selectedRange[1].diff(selectedRange[0], 'day');
+      const days = getBusinessRentalDaysByMinutes(
+        selectedRange[0],
+        selectedRange[1]
+      );
       onPriceCalculated({ totalPrice, days });
     }
   }, [totalPrice, calcLoading, selectedRange, onPriceCalculated]);
