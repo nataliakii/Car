@@ -7,6 +7,11 @@
  * Role/ownership helpers live in admin-rbac.js. This file re-exports from index for backward compatibility.
  */
 
+// Shared order field keys for permissions/policy checks.
+export const ORDER_FIELD_KEYS = Object.freeze({
+  SECOND_DRIVER: "secondDriver",
+});
+
 // Re-export from admin-rbac + orderRbacShim only (avoids loading index → confirmOrderFlow in tests)
 export {
   ROLE,

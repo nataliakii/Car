@@ -84,6 +84,7 @@ const BookingModal = ({
   const { t } = useTranslation();
   const secondDriverPriceLabelValue = getSecondDriverPriceLabelValue();
   const { company, companyLoading, companyError, lang } = useMainContext();
+  const carApiIdentifier = car?.regNumber || car?.carNumber || "";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -122,7 +123,7 @@ const BookingModal = ({
 
   // Получение стоимости с сервера при изменении дат
   const fetchTotalPrice = useCallback(async (signal) => {
-    if (!car?.carNumber || !presetDates?.startDate || !presetDates?.endDate) {
+    if (!carApiIdentifier || !presetDates?.startDate || !presetDates?.endDate) {
       setDaysAndTotal({ days: 0, totalPrice: 0 });
       return;
     }
@@ -135,7 +136,7 @@ const BookingModal = ({
     setCalcLoading(true);
     try {
       const result = await calculateTotalPrice(
-        car.carNumber,
+        carApiIdentifier,
         normalizedStartDate.format("YYYY-MM-DD"),
         normalizedEndDate.format("YYYY-MM-DD"),
         insurance,
@@ -153,7 +154,7 @@ const BookingModal = ({
       }
     }
   }, [
-    car?.carNumber,
+    carApiIdentifier,
     presetDates?.startDate,
     presetDates?.endDate,
     insurance,
@@ -171,7 +172,7 @@ const BookingModal = ({
 
   // Лог: даты бронирования, отображаемые в BookingModal (start/end + времена)
   useEffect(() => {
-    const carIdentifier = car?._id || car?.carNumber;
+    const carIdentifier = car?._id || car?.regNumber || car?.carNumber;
     // Базовые объекты (могут быть dayjs или Date)
     const rawStart = presetDates?.startDate
       ? dayjs(presetDates.startDate)
@@ -191,7 +192,7 @@ const BookingModal = ({
     // Диагностический пролог: покажем, почему лог мог быть подавлен
     try {
       const carMatch =
-        !DEBUG_CAR_ID || [car?._id, car?.carNumber].includes(DEBUG_CAR_ID);
+        !DEBUG_CAR_ID || [car?._id, car?.regNumber, car?.carNumber].includes(DEBUG_CAR_ID);
       const dateMatch =
         !DEBUG_DATE ||
         DEBUG_DATE === presetEndStr ||
@@ -211,7 +212,7 @@ const BookingModal = ({
       // });
     } catch {}
     if (
-      (!DEBUG_CAR_ID || [car?._id, car?.carNumber].includes(DEBUG_CAR_ID)) &&
+      (!DEBUG_CAR_ID || [car?._id, car?.regNumber, car?.carNumber].includes(DEBUG_CAR_ID)) &&
       (!DEBUG_DATE ||
         DEBUG_DATE === presetEndStr ||
         DEBUG_DATE === presetStartStr)
@@ -270,6 +271,7 @@ const BookingModal = ({
     startTime,
     endTime,
     car?._id,
+    car?.regNumber,
     car?.carNumber,
   ]);
 
@@ -472,7 +474,9 @@ const BookingModal = ({
       const timeOutUTC = toServerUTC(timeOutAthens);
 
       const orderData = {
-        carNumber: car.carNumber || "",
+        // regNumber is primary identifier for booking flows; carNumber kept as fallback.
+        regNumber: car?.regNumber || "",
+        carNumber: car?.carNumber || "",
         customerName: name || "",
         phone: phone || "",
         email: email ? email : "",

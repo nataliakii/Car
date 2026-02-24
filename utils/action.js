@@ -977,7 +977,7 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
 
 /**
  * Calculate total price for rental order
- * @param {string} carNumber - Car number
+ * @param {string} carIdentifier - Car reg number (preferred) or legacy car number
  * @param {Date|string} rentalStartDate - Start date
  * @param {Date|string} rentalEndDate - End date
  * @param {string} kacko - Insurance type (default: "TPL")
@@ -988,7 +988,7 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
  * @returns {Promise<{totalPrice: number, days: number, ok: boolean}>}
  */
 export async function calculateTotalPrice(
-  carNumber,
+  carIdentifier,
   rentalStartDate,
   rentalEndDate,
   kacko = "TPL",
@@ -1014,7 +1014,8 @@ export async function calculateTotalPrice(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        carNumber,
+        regNumber: carIdentifier,
+        carNumber: carIdentifier, // legacy fallback
         rentalStartDate,
         rentalEndDate,
         kacko,

@@ -21,6 +21,7 @@ describe("order date consistency across channels", () => {
     _id: "order-1",
     orderNumber: "1001",
     carNumber: "0052",
+    regNumber: "AA-1234",
     carModel: "Toyota Yaris",
     rentalStartDate: "2026-01-14T22:00:00.000Z", // 15 Jan Athens
     rentalEndDate: "2026-01-16T22:00:00.000Z", // 17 Jan Athens
@@ -105,6 +106,7 @@ describe("order date consistency across channels", () => {
     expect(telegramText).toContain(`📅 From: ${expectedStartTelegram}`);
     expect(telegramText).toContain(`📅 To: ${expectedEndTelegram}`);
     expect(telegramText).toContain(`🗓 Days: ${order.numberOfDays}`);
+    expect(telegramText).toContain("AA-1234");
 
     const firstEmailPayload = JSON.parse(global.fetch.mock.calls[0][1].body);
     expect(firstEmailPayload.message).toContain(`🗓 Days: ${order.numberOfDays}`);
@@ -163,6 +165,7 @@ describe("order date consistency across channels", () => {
     expect(telegramText).toContain(`📅 From: ${expectedStartTelegram}`);
     expect(telegramText).toContain(`📅 To: ${expectedEndTelegram}`);
     expect(telegramText).toContain(`🗓 Days: ${mayOrder.numberOfDays}`);
+    expect(telegramText).toContain("AA-1234");
 
     const emailPayload = JSON.parse(global.fetch.mock.calls[0][1].body);
     expect(emailPayload.message).toContain(`🗓 Days: ${mayOrder.numberOfDays}`);

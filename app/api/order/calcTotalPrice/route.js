@@ -53,6 +53,7 @@ export async function POST(request) {
     debugBody = await request.json();
     const {
       carNumber,
+      regNumber,
       rentalStartDate,
       rentalEndDate,
       kacko = "TPL",
@@ -64,6 +65,7 @@ export async function POST(request) {
     const normalizedSecondDriver = toBooleanField(secondDriver, false);
     console.log("[API calcTotalPrice] Получены параметры:", {
       carNumber,
+      regNumber,
       rentalStartDate,
       rentalEndDate,
       normalizedStartDate,
@@ -72,13 +74,29 @@ export async function POST(request) {
       childSeats,
       secondDriver: normalizedSecondDriver,
     });
-    if (!carNumber || !normalizedStartDate || !normalizedEndDate) {
+    const normalizedCarNumber =
+      typeof carNumber === "string" ? carNumber.trim() : "";
+    const normalizedRegNumber =
+      typeof regNumber === "string" ? regNumber.trim() : "";
+    if (
+      (!normalizedRegNumber && !normalizedCarNumber) ||
+      !normalizedStartDate ||
+      !normalizedEndDate
+    ) {
       return new Response(JSON.stringify({ message: "Missing parameters" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
-    const car = await Car.findOne({ carNumber });
+
+    let car = null;
+    if (normalizedRegNumber) {
+      car = await Car.findOne({ regNumber: normalizedRegNumber });
+    }
+    if (!car && normalizedCarNumber) {
+      car = await Car.findOne({ carNumber: normalizedCarNumber });
+    }
+
     if (!car) {
       return new Response(JSON.stringify({ message: "Car not found" }), {
         status: 404,

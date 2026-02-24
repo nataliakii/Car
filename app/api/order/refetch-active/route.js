@@ -34,7 +34,7 @@ async function handler(request) {
       rentalEndDate: { $gte: todayStartUTC },
     })
       .select(
-        "rentalStartDate rentalEndDate timeIn timeOut car carNumber confirmed customerName phone email secondDriver Viber Whatsapp Telegram numberOfDays totalPrice OverridePrice carModel date my_order placeIn placeOut flightNumber ChildSeats insurance franchiseOrder orderNumber"
+        "rentalStartDate rentalEndDate timeIn timeOut car carNumber regNumber confirmed customerName phone email secondDriver Viber Whatsapp Telegram numberOfDays totalPrice OverridePrice carModel date my_order placeIn placeOut flightNumber ChildSeats insurance franchiseOrder orderNumber"
       )
       .lean();
 

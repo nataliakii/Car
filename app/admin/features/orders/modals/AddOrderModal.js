@@ -63,6 +63,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
     useMainContext();
   const { t } = useTranslation();
   const secondDriverPriceLabelValue = getSecondDriverPriceLabelValue();
+  const carApiIdentifier = car?.regNumber || car?.carNumber || "";
 
   const locations = company.locations.map((loc) => loc.name);
 
@@ -103,14 +104,14 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
     const abortController = new AbortController();
 
     const fetchTotalPrice = async () => {
-      if (!car?.carNumber || !bookDates?.start || !bookDates?.end) {
+      if (!carApiIdentifier || !bookDates?.start || !bookDates?.end) {
         setDaysAndTotal({ days: 0, totalPrice: 0 });
         return;
       }
       setCalcLoading(true);
       try {
         const result = await calculateTotalPrice(
-          car.carNumber,
+          carApiIdentifier,
           bookDates.start,
           bookDates.end,
           orderDetails.insurance,
@@ -137,7 +138,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
       abortController.abort();
     };
   }, [
-    car?.carNumber,
+    carApiIdentifier,
     bookDates?.start,
     bookDates?.end,
     orderDetails.insurance,
@@ -342,6 +343,8 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
       : daysAndTotal.totalPrice;
     
     const data = {
+      // regNumber is primary identifier for booking flows; carNumber kept as fallback.
+      regNumber: car?.regNumber,
       carNumber: car?.carNumber,
       customerName: orderDetails.customerName,
       phone: orderDetails.phone,

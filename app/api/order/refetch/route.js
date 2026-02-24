@@ -7,7 +7,7 @@ async function handler(request) {
     await connectToDB();
 
     const orders = await Order.find()
-      .select("rentalStartDate rentalEndDate timeIn timeOut car carNumber confirmed customerName phone email secondDriver Viber Whatsapp Telegram numberOfDays totalPrice OverridePrice carModel date my_order placeIn placeOut flightNumber ChildSeats insurance franchiseOrder orderNumber")
+      .select("rentalStartDate rentalEndDate timeIn timeOut car carNumber regNumber confirmed customerName phone email secondDriver Viber Whatsapp Telegram numberOfDays totalPrice OverridePrice carModel date my_order placeIn placeOut flightNumber ChildSeats insurance franchiseOrder orderNumber")
       .lean();
 
     return new Response(JSON.stringify(orders), {

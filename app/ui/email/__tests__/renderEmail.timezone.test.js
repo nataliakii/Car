@@ -6,6 +6,7 @@ describe("renderCustomerOrderConfirmationEmail timezone", () => {
     orderId: "order-1",
     orderNumber: "1001",
     carNumber: "AB1234",
+    regNumber: "AA-1234",
     carModel: "Toyota Yaris",
     customerName: "Test User",
     totalPrice: 123,
@@ -24,6 +25,7 @@ describe("renderCustomerOrderConfirmationEmail timezone", () => {
     expect(text).toContain("17 Jan 2026");
     expect(text).toContain("14:00");
     expect(text).toContain("10:00");
+    expect(text).toContain("AA-1234");
   });
 
   test("formats summer dates/times in Athens timezone", () => {

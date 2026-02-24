@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import { authOptions } from "@lib/authOptions";
 import { connectToDB } from "@utils/database";
 import { Order } from "@models/order";
+import { Car } from "@models/car";
 import { ROLE } from "@models/user";
 import { renderCustomerOfficialConfirmationEmail } from "@/app/ui/email/renderEmail";
 import { buildCustomerOfficialConfirmationPdf } from "@/app/ui/email/pdf/customerOfficialConfirmationPdf";
@@ -11,6 +12,9 @@ import { buildCustomerOfficialConfirmationPdf } from "@/app/ui/email/pdf/custome
 const SUPPORTED_LOCALES = new Set(["en", "ru", "el", "de", "bg", "ro", "sr"]);
 const INTERNAL_PASSWORD_HEADER = "x-internal-password";
 const DEFAULT_CC_EMAIL = "admin@bbqr.site";
+const DEFAULT_MEETING_CONTACT_PHONE = "+30-697-003-47-07";
+const DEFAULT_MEETING_CONTACT_NAME = "Orest";
+const DEFAULT_MEETING_CONTACT_CHANNEL = "WhatsApp";
 
 function normalizeLocale(input) {
   if (typeof input !== "string") return "en";
@@ -22,6 +26,11 @@ function normalizeLocale(input) {
 function normalizeEmail(value) {
   if (typeof value !== "string") return "";
   return value.trim();
+}
+
+function normalizeText(value) {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
 }
 
 export async function POST(request) {
@@ -82,14 +91,32 @@ export async function POST(request) {
       );
     }
 
+    let regNumber =
+      typeof order.regNumber === "string" ? order.regNumber.trim() : "";
+    if (!regNumber && order.car && mongoose.Types.ObjectId.isValid(String(order.car))) {
+      const car = await Car.findById(order.car).select("regNumber").lean();
+      regNumber =
+        typeof car?.regNumber === "string" ? car.regNumber.trim() : "";
+    }
+
     const effectiveTotalPrice =
       order.OverridePrice !== null && order.OverridePrice !== undefined
         ? order.OverridePrice
         : order.totalPrice;
+    const meetingContactPhone =
+      normalizeText(process.env.ORDER_CONFIRMATION_MEETING_CONTACT_PHONE) ||
+      DEFAULT_MEETING_CONTACT_PHONE;
+    const meetingContactName =
+      normalizeText(process.env.ORDER_CONFIRMATION_MEETING_CONTACT_NAME) ||
+      DEFAULT_MEETING_CONTACT_NAME;
+    const meetingContactChannel =
+      normalizeText(process.env.ORDER_CONFIRMATION_MEETING_CONTACT_CHANNEL) ||
+      DEFAULT_MEETING_CONTACT_CHANNEL;
 
     const payload = {
       orderId: order._id?.toString?.() || order._id,
       orderNumber: order.orderNumber,
+      regNumber,
       carNumber: order.carNumber,
       carModel: order.carModel,
       rentalStartDate: order.rentalStartDate,
@@ -101,12 +128,16 @@ export async function POST(request) {
       numberOfDays: order.numberOfDays,
       ChildSeats: order.ChildSeats ?? order.childSeats ?? 0,
       insurance: order.insurance,
+      franchiseOrder: order.franchiseOrder,
       flightNumber: order.flightNumber,
       totalPrice: effectiveTotalPrice,
       customerName: order.customerName,
       phone: order.phone,
       email: customerEmail,
       secondDriver: order.secondDriver === true,
+      meetingContactPhone,
+      meetingContactName,
+      meetingContactChannel,
       locale,
     };
 

@@ -50,7 +50,7 @@ const CalendarPicker = ({
   onBookingComplete,
   orders,
   carId,
-  car, // Добавляем объект car для получения carNumber
+  car, // Добавляем объект car для получения regNumber/carNumber
   setSelectedTimes,
   selectedTimes,
   onDateChange, // ⬅️ новый проп
@@ -82,17 +82,18 @@ const CalendarPicker = ({
   // Состояние для расчета суммы заказа
   const [totalPrice, setTotalPrice] = useState(0);
   const [calcLoading, setCalcLoading] = useState(false);
+  const carApiIdentifier = car?.regNumber || car?.carNumber || "";
 
   // Расчет суммы заказа через action
   const fetchTotalPrice = useCallback(async () => {
-    if (!car?.carNumber || !selectedRange[0] || !selectedRange[1]) {
+    if (!carApiIdentifier || !selectedRange[0] || !selectedRange[1]) {
       setTotalPrice(0);
       return;
     }
     setCalcLoading(true);
     try {
       const result = await calculateTotalPrice(
-        car.carNumber,
+        carApiIdentifier,
         selectedRange[0].toDate(),
         selectedRange[1].toDate(),
         "TPL", // Дефолтное значение
@@ -104,7 +105,7 @@ const CalendarPicker = ({
     } finally {
       setCalcLoading(false);
     }
-  }, [car?.carNumber, selectedRange]);
+  }, [carApiIdentifier, selectedRange]);
 
   useEffect(() => {
     if (showBookButton && selectedRange[0] && selectedRange[1]) {

@@ -51,7 +51,8 @@ import { renderCustomerOrderConfirmationEmail, renderAdminOrderNotificationEmail
  * @typedef {Object} NotificationPayload
  * @property {string} orderId - Order ID
  * @property {string} [orderNumber] - Order number for display
- * @property {string} [carNumber] - Car registration number
+ * @property {string} [regNumber] - Car registration number (preferred)
+ * @property {string} [carNumber] - Legacy internal car number (fallback)
  * @property {string} [carModel] - Car model name
  * @property {Date|string} [rentalStartDate] - Rental start
  * @property {Date|string} [rentalEndDate] - Rental end
@@ -63,6 +64,8 @@ import { renderCustomerOrderConfirmationEmail, renderAdminOrderNotificationEmail
  * @property {boolean} [Viber] - Prefer Viber contact
  * @property {boolean} [Whatsapp] - Prefer Whatsapp contact
  * @property {boolean} [Telegram] - Prefer Telegram contact
+ * @property {number | null} [oldPrice] - Effective price before update
+ * @property {number | null} [newPrice] - Effective price after update
  * @property {string} action - Action performed
  * @property {string} intent - Action intent (from ACTION_INTENT)
  * @property {string} [actorName] - Who performed the action
@@ -187,13 +190,20 @@ function formatDateShort(d) {
  * @returns {string}
  */
 function formatNotificationText(payload, reason) {
+  const carRegNumber =
+    payload.regNumber && String(payload.regNumber).trim()
+      ? String(payload.regNumber).trim()
+      : payload.carNumber && String(payload.carNumber).trim()
+        ? String(payload.carNumber).trim()
+        : "";
+  const carDisplay = carRegNumber
+    ? `${payload.carModel || "—"} (${carRegNumber})`
+    : payload.carModel || "—";
+
   if (payload.intent === "ORDER_CREATED") {
     const days =
       payload.numberOfDays ??
       getBusinessDaySpanFromStoredDates(payload.rentalStartDate, payload.rentalEndDate);
-    const carDisplay = payload.carNumber
-      ? `${payload.carModel || "—"} (${payload.carNumber})`
-      : (payload.carModel || "—");
     const customerLines = [
       payload.customerName != null ? `• Name: ${payload.customerName}` : null,
       payload.phone != null ? `• Phone: ${payload.phone}` : null,
@@ -215,17 +225,42 @@ function formatNotificationText(payload, reason) {
     return lines.join("\n");
   }
 
+  const oldPrice =
+    typeof payload.oldPrice === "number" && !Number.isNaN(payload.oldPrice)
+      ? payload.oldPrice
+      : null;
+  const newPrice =
+    typeof payload.newPrice === "number" && !Number.isNaN(payload.newPrice)
+      ? payload.newPrice
+      : null;
+
   const lines = [
     reason,
     "",
     `Заказ: ${payload.orderNumber || payload.orderId}`,
-    `Авто: ${payload.carNumber || "—"}`,
+    `Авто: ${carDisplay || "—"}`,
     `Действие: ${payload.action}`,
+    oldPrice !== null ? `Старая цена: €${oldPrice.toFixed(2)}` : null,
+    newPrice !== null ? `Новая цена: €${newPrice.toFixed(2)}` : null,
     payload.actorName ? `Кто: ${payload.actorName}` : null,
     `Источник: ${payload.source}`,
     payload.timestamp ? `Время: ${new Date(payload.timestamp).toISOString()}` : null,
   ].filter(Boolean);
   return lines.join("\n");
+}
+
+function getEffectivePrice(order) {
+  if (!order || typeof order !== "object") return null;
+  if (
+    typeof order.OverridePrice === "number" &&
+    !Number.isNaN(order.OverridePrice)
+  ) {
+    return Number(order.OverridePrice);
+  }
+  if (typeof order.totalPrice === "number" && !Number.isNaN(order.totalPrice)) {
+    return Number(order.totalPrice);
+  }
+  return null;
 }
 
 /**
@@ -430,6 +465,7 @@ async function dispatchOrderNotifications(notifications, payload, access, compan
  */
 export async function notifyOrderAction({
   order,
+  previousOrder = null,
   user,
   action,
   actorName,
@@ -494,6 +530,7 @@ export async function notifyOrderAction({
   const payload = {
     orderId: order._id?.toString?.() || order._id,
     orderNumber: order.orderNumber,
+    regNumber: order.regNumber || order.car?.regNumber || "",
     carNumber: order.carNumber,
     carModel: order.carModel,
     rentalStartDate: order.rentalStartDate,
@@ -520,6 +557,8 @@ export async function notifyOrderAction({
     source,
     timestamp: new Date(),
     locale: locale || order.locale || "en",
+    oldPrice: getEffectivePrice(previousOrder),
+    newPrice: getEffectivePrice(order),
   };
   
   await dispatchOrderNotifications(notifications, payload, access, companyEmail);

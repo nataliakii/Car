@@ -21,6 +21,7 @@ import dayjs from "dayjs";
 import { getOrderAccess, ROLE } from "@/domain/orders/orderAccessPolicy";
 import { applyVisibilityToOrder } from "@/domain/orders/orderVisibility";
 import { getTimeBucket } from "@/domain/time/athensTime";
+import { ORDER_FIELD_KEYS } from "@/domain/orders/orderPermissions";
 
 // Athens timezone
 const ATHENS_TZ = "Europe/Athens";
@@ -164,7 +165,7 @@ export function checkFieldAccess(access, fieldsToUpdate) {
       if (!access.canEditPricing) deniedFields.push(field);
     }
     // Опция бронирования (не PII): доступна только при общем праве редактирования заказа
-    else if (["secondDriver"].includes(field)) {
+    else if ([ORDER_FIELD_KEYS.SECOND_DRIVER].includes(field)) {
       if (!access.canEdit) deniedFields.push(field);
     }
     // Подтверждение

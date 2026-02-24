@@ -45,25 +45,54 @@ function toSafeFilePart(value) {
   return normalized || "order";
 }
 
+function normalizeText(value) {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+}
+
+function formatAmount(value) {
+  const raw = normalizeText(value);
+  if (!raw) return "";
+  const numeric = Number(raw);
+  if (!Number.isFinite(numeric)) return raw;
+  if (Number.isInteger(numeric)) return String(numeric);
+  return numeric.toFixed(2).replace(/\.?0+$/, "");
+}
+
 function buildCustomerEmailViewModel(payload) {
   const t = getCustomerEmailStrings(payload.locale);
   const locale = normalizeLocale(payload.locale);
   const fromStr = formatDateLong(payload.rentalStartDate, locale);
   const toStr = formatDateLong(payload.rentalEndDate, locale);
-  const carDisplay = payload.carNumber
-    ? `${payload.carModel || "—"} (${payload.carNumber})`
+  const carRegNumber =
+    payload.regNumber && String(payload.regNumber).trim()
+      ? String(payload.regNumber).trim()
+      : payload.carNumber && String(payload.carNumber).trim()
+        ? String(payload.carNumber).trim()
+        : "";
+  const carDisplay = carRegNumber
+    ? `${payload.carModel || "—"} (${carRegNumber})`
     : payload.carModel || "—";
-  const customerName =
-    payload.customerName && String(payload.customerName).trim()
-      ? payload.customerName
-      : "Guest";
-  const orderNum = payload.orderNumber || payload.orderId || "";
-  const total = payload.totalPrice != null ? String(payload.totalPrice) : "";
+  const customerName = normalizeText(payload.customerName) || "Guest";
+  const orderNum = normalizeText(payload.orderNumber) || normalizeText(payload.orderId);
+  const total = payload.totalPrice != null ? formatAmount(payload.totalPrice) : "";
   const numberOfDays =
     payload.numberOfDays != null ? String(payload.numberOfDays) : "";
   const childSeats = payload.ChildSeats != null ? String(payload.ChildSeats) : "0";
-  const insurance =
-    payload.insurance && String(payload.insurance).trim() ? payload.insurance : "";
+  const insurance = normalizeText(payload.insurance);
+  const franchiseNumber = Number(payload.franchiseOrder);
+  const franchiseAmount =
+    payload.franchiseOrder !== null &&
+    payload.franchiseOrder !== undefined &&
+    normalizeText(payload.franchiseOrder) &&
+    Number.isFinite(franchiseNumber) &&
+    franchiseNumber > 0
+      ? formatAmount(franchiseNumber)
+      : "";
+  const insuranceWithFranchise =
+    insurance && franchiseAmount
+      ? `${insurance} (${t.franchiseLabel || "Franchise"} ${franchiseAmount} EUR)`
+      : insurance;
   const secondDriverEnabled = payload.secondDriver === true;
   const secondDriverText = t.secondDriverEnabled || "Yes";
   const secondDriverPriceLabelValue = getSecondDriverPriceLabelValue();
@@ -71,17 +100,42 @@ function buildCustomerEmailViewModel(payload) {
     t.secondDriverLabel || "Second driver ({{price}} €/day)",
     secondDriverPriceLabelValue
   );
-  const placeIn =
-    payload.placeIn && String(payload.placeIn).trim() ? payload.placeIn : "";
-  const placeOut =
-    payload.placeOut && String(payload.placeOut).trim() ? payload.placeOut : "";
+  const placeIn = normalizeText(payload.placeIn);
+  const placeOut = normalizeText(payload.placeOut);
   const timeInStr = payload.timeIn ? formatTime(payload.timeIn) : "";
   const timeOutStr = payload.timeOut ? formatTime(payload.timeOut) : "";
-  const flightNumber =
-    payload.flightNumber && String(payload.flightNumber).trim()
-      ? payload.flightNumber
-      : "";
+  const flightNumber = normalizeText(payload.flightNumber);
+  const flightShortLabel = t.flightShortLabel || "Flight";
+  const pickupLocationWithFlight =
+    placeIn && flightNumber
+      ? `${placeIn} (${flightShortLabel} ${flightNumber})`
+      : placeIn;
+  const phone = normalizeText(payload.phone);
+  const email = normalizeText(payload.email);
+  const phoneInlineLabel = t.phoneInlineLabel || "tel.";
+  const emailInlineLabel = t.emailInlineLabel || "e-mail";
+  const customerContactParts = [];
+  if (phone) customerContactParts.push(`${phoneInlineLabel} ${phone}`);
+  if (email) customerContactParts.push(`${emailInlineLabel}: ${email}`);
+  const customerContactValue = customerContactParts.length
+    ? `${customerName} (${customerContactParts.join(", ")})`
+    : customerName;
   const greeting = (t.greeting || "").replace("{{CustomerName}}", customerName);
+  const greetingBase = greeting.trim().replace(/[,\s]+$/g, "");
+  const officialGreeting = customerContactParts.length
+    ? `${greetingBase} (${customerContactParts.join(", ")}),`
+    : greeting;
+  const meetingContactPhone = normalizeText(payload.meetingContactPhone);
+  const meetingContactChannel = normalizeText(payload.meetingContactChannel);
+  const meetingContactName = normalizeText(payload.meetingContactName);
+  const meetingContactValue = [
+    meetingContactPhone,
+    meetingContactChannel ? `(${meetingContactChannel})` : "",
+    meetingContactName,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
   const rentalPeriodWithTime =
     fromStr && toStr
       ? `${fromStr}${timeInStr ? ` ${timeInStr}` : ""} – ${toStr}${
@@ -101,15 +155,23 @@ function buildCustomerEmailViewModel(payload) {
     numberOfDays,
     childSeats,
     insurance,
+    insuranceWithFranchise,
+    franchiseAmount,
     secondDriverEnabled,
     secondDriverText,
     secondDriverLabel,
     placeIn,
     placeOut,
+    pickupLocationWithFlight,
     timeInStr,
     timeOutStr,
     flightNumber,
+    phone,
+    email,
+    customerContactValue,
     greeting,
+    officialGreeting,
+    meetingContactValue,
     rentalPeriodWithTime,
   };
 }
@@ -235,12 +297,18 @@ export function renderCustomerOfficialConfirmationEmail(payload) {
     total,
     childSeats,
     insurance,
+    insuranceWithFranchise,
     secondDriverLabel,
     secondDriverEnabled,
     secondDriverText,
     placeIn,
     placeOut,
-    greeting,
+    pickupLocationWithFlight,
+    customerContactValue,
+    officialGreeting,
+    meetingContactValue,
+    phone,
+    email,
     rentalPeriodWithTime,
   } = vm;
 
@@ -266,8 +334,12 @@ export function renderCustomerOfficialConfirmationEmail(payload) {
   const childSeatsLabel = t.childSeatsLabel || "Child seats";
   const totalAmountLabel = t.totalAmountLabel || "Total amount";
   const customerLabel = t.customerLabel || "Customer";
+  const customerContactLabel = t.customerContactLabel || "Customer contact";
   const emailLabel = t.emailLabel || "Email";
   const phoneLabel = t.phoneLabel || "Phone";
+  const meetingContactLabel =
+    t.meetingContactLabel || "Meeting contact at the airport";
+  const meetingContactFallback = t.meetingContactFallback || "—";
 
   const rentalPeriodValue =
     rentalPeriodWithTime ||
@@ -277,11 +349,15 @@ export function renderCustomerOfficialConfirmationEmail(payload) {
   const secondDriverValue = secondDriverEnabled
     ? secondDriverText || t.yes || "Yes"
     : t.no || "No";
-  const orderNumberValue = orderNum ? `#${orderNum}` : "—";
+  const orderNumberValue = orderNum ? String(orderNum) : "—";
+  const pickupLocationValue = pickupLocationWithFlight || placeIn || "—";
+  const insuranceValue = insuranceWithFranchise || insurance || "—";
+  const customerContactDisplay = customerContactValue || customerName || "—";
+  const meetingContactDisplay = meetingContactValue || meetingContactFallback;
 
   const html = renderCustomerOfficialConfirmation({
     title,
-    greeting,
+    greeting: officialGreeting,
     intro,
     pdfNote,
     // TEMP: hide generated timestamp block in HTML email
@@ -291,25 +367,32 @@ export function renderCustomerOfficialConfirmationEmail(payload) {
     orderNumberValue,
     vehicleLabel,
     vehicleValue: carDisplay,
+    customerContactLabel,
+    customerContactValue: customerContactDisplay,
     rentalPeriodLabel,
     rentalPeriodValue,
     pickupLocationLabel,
-    pickupLocationValue: placeIn || "—",
+    pickupLocationValue,
     returnLocationLabel,
     returnLocationValue: placeOut || "—",
     insuranceLabel,
-    insuranceValue: insurance || "—",
+    insuranceValue,
     childSeatsLabel,
     childSeatsValue: childSeats || "0",
     secondDriverLabel,
     secondDriverValue,
+    meetingContactLabel,
+    meetingContactValue: meetingContactDisplay,
     totalAmountLabel,
     totalAmountValue: total || "0",
-    orderRefText: orderNumberValue,
+    orderRefText:
+      orderNumberValue !== "—"
+        ? `${orderNumberLabel}: ${orderNumberValue}`
+        : orderNumberValue,
   });
 
   const text = [
-    greeting,
+    officialGreeting,
     "",
     title,
     "",
@@ -318,12 +401,14 @@ export function renderCustomerOfficialConfirmationEmail(payload) {
     "",
     `${orderNumberLabel}: ${orderNumberValue}`,
     `${vehicleLabel}: ${carDisplay || "—"}`,
+    `${customerContactLabel}: ${customerContactDisplay}`,
     `${rentalPeriodLabel}: ${rentalPeriodValue || "—"}`,
-    `${pickupLocationLabel}: ${placeIn || "—"}`,
+    `${pickupLocationLabel}: ${pickupLocationValue}`,
     `${returnLocationLabel}: ${placeOut || "—"}`,
-    `${insuranceLabel}: ${insurance || "—"}`,
+    `${insuranceLabel}: ${insuranceValue}`,
     `${childSeatsLabel}: ${childSeats || "0"}`,
     `${secondDriverLabel}: ${secondDriverValue}`,
+    `${meetingContactLabel}: ${meetingContactDisplay}`,
     `${totalAmountLabel}: €${total || "0"}`,
     // TEMP: hide generated timestamp line in plain-text email
     // "",
@@ -344,24 +429,28 @@ export function renderCustomerOfficialConfirmationEmail(payload) {
     orderNumberValue,
     vehicleLabel,
     vehicleValue: carDisplay || "—",
+    customerContactLabel,
+    customerContactValue: customerContactDisplay,
     customerLabel,
     customerValue: customerName || "—",
     emailLabel,
-    emailValue: payload.email || "—",
+    emailValue: email || "—",
     phoneLabel,
-    phoneValue: payload.phone || "—",
+    phoneValue: phone || "—",
     rentalPeriodLabel,
     rentalPeriodValue: rentalPeriodValue || "—",
     pickupLocationLabel,
-    pickupLocationValue: placeIn || "—",
+    pickupLocationValue,
     returnLocationLabel,
     returnLocationValue: placeOut || "—",
     insuranceLabel,
-    insuranceValue: insurance || "—",
+    insuranceValue,
     childSeatsLabel,
     childSeatsValue: childSeats || "0",
     secondDriverLabel,
     secondDriverValue,
+    meetingContactLabel,
+    meetingContactValue: meetingContactDisplay,
     totalAmountLabel,
     totalAmountValue: total || "0",
     pdfNote,

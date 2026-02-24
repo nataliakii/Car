@@ -53,6 +53,7 @@ async function handler(request) {
         : null,
       carModel: order.carModel,
       carNumber: order.carNumber,
+      regNumber: order.regNumber || order.car?.regNumber || "",
       customerName: order.customerName,
       phone: order.phone,
       email: order.email || "",

@@ -211,6 +211,10 @@ export const PATCH = async (request, { params }) => {
       );
     }
 
+    const previousOrderSnapshot = order.toObject
+      ? order.toObject()
+      : { ...order };
+
     // Determine which fields are being updated
     const hasDateTimeChanges =
       payload.rentalStartDate !== undefined ||
@@ -338,6 +342,7 @@ export const PATCH = async (request, { params }) => {
           const orderPlain = updatedOrder.toObject ? updatedOrder.toObject() : { ...updatedOrder };
           await notifyOrderAction({
             order: orderPlain,
+            previousOrder: previousOrderSnapshot,
             user: session.user,
             action,
             actorName: session.user?.name || session.user?.email,
@@ -635,6 +640,7 @@ export const PATCH = async (request, { params }) => {
               const orderPlain = updatedOrder.toObject ? updatedOrder.toObject() : { ...updatedOrder };
               await notifyOrderAction({
                 order: orderPlain,
+                previousOrder: previousOrderSnapshot,
                 user: session.user,
                 action,
                 actorName: session.user?.name || session.user?.email,
@@ -794,6 +800,7 @@ export const PATCH = async (request, { params }) => {
         const orderPlain = savedOrder.toObject ? savedOrder.toObject() : { ...savedOrder };
         await notifyOrderAction({
           order: orderPlain,
+          previousOrder: previousOrderSnapshot,
           user: session.user,
           action,
           actorName: session.user?.name || session.user?.email,
@@ -868,6 +875,7 @@ export const PATCH = async (request, { params }) => {
         const orderPlain = updatedOrder.toObject ? updatedOrder.toObject() : { ...updatedOrder };
         await notifyOrderAction({
           order: orderPlain,
+          previousOrder: previousOrderSnapshot,
           user: session.user,
           action,
           actorName: session.user?.name || session.user?.email,

@@ -93,6 +93,8 @@ function drawTextBlock({
  *   orderNumberValue: string,
  *   vehicleLabel: string,
  *   vehicleValue: string,
+ *   customerContactLabel: string,
+ *   customerContactValue: string,
  *   customerLabel: string,
  *   customerValue: string,
  *   emailLabel: string,
@@ -111,6 +113,8 @@ function drawTextBlock({
  *   childSeatsValue: string,
  *   secondDriverLabel: string,
  *   secondDriverValue: string,
+ *   meetingContactLabel: string,
+ *   meetingContactValue: string,
  *   totalAmountLabel: string,
  *   totalAmountValue: string,
  *   pdfNote: string,
@@ -171,6 +175,7 @@ export async function buildCustomerOfficialConfirmationPdf(data) {
   const rows = [
     [data.orderNumberLabel, data.orderNumberValue],
     [data.vehicleLabel, data.vehicleValue],
+    [data.customerContactLabel, data.customerContactValue],
     [data.customerLabel, data.customerValue],
     [data.emailLabel, data.emailValue],
     [data.phoneLabel, data.phoneValue],
@@ -180,6 +185,7 @@ export async function buildCustomerOfficialConfirmationPdf(data) {
     [data.insuranceLabel, data.insuranceValue],
     [data.childSeatsLabel, data.childSeatsValue],
     [data.secondDriverLabel, data.secondDriverValue],
+    [data.meetingContactLabel, data.meetingContactValue],
   ];
 
   for (const [label, value] of rows) {

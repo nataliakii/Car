@@ -66,6 +66,7 @@ async function postOrderAddHandler(request) {
 
     const {
       carNumber,
+      regNumber,
       customerName,
       phone,
       email,
@@ -140,8 +141,32 @@ async function postOrderAddHandler(request) {
       );
     }
 
-    // Find the car by its car number
-    const existingCar = await Car.findOne({ carNumber: carNumber });
+    const normalizedCarNumber =
+      typeof carNumber === "string" ? carNumber.trim() : "";
+    const normalizedRegNumber =
+      typeof regNumber === "string" ? regNumber.trim() : "";
+
+    if (!normalizedRegNumber && !normalizedCarNumber) {
+      return new Response(
+        JSON.stringify({
+          message: "Car identifier is required",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Find car primarily by regNumber, fallback to legacy carNumber.
+    let existingCar = null;
+    if (normalizedRegNumber) {
+      existingCar = await Car.findOne({ regNumber: normalizedRegNumber });
+    }
+    if (!existingCar && normalizedCarNumber) {
+      existingCar = await Car.findOne({ carNumber: normalizedCarNumber });
+    }
+
     if (!existingCar) {
       return new Response(
         JSON.stringify({
@@ -222,7 +247,8 @@ async function postOrderAddHandler(request) {
 
     // Create a new order document with calculated values
     const newOrder = new Order({
-      carNumber: carNumber,
+      carNumber: existingCar.carNumber,
+      regNumber: existingCar.regNumber || "",
       customerName,
       phone,
       email: safeEmail,

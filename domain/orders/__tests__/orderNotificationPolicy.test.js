@@ -11,6 +11,7 @@ import {
   getOrderNotifications,
   isCriticalAction,
   getActionIntent,
+  getActionFromChangedFields,
   ACTION_INTENT,
   isActionAllowedByAccess,
   getPriorityByIntent,
@@ -54,14 +55,22 @@ describe("orderNotificationPolicy", () => {
       expect(ACTION_INTENT.CREATE).toBe("ORDER_CREATED");
       expect(ACTION_INTENT.CONFIRM).toBe("ORDER_CONFIRMED");
       expect(ACTION_INTENT.UPDATE_DATES).toBe("CRITICAL_EDIT");
+      expect(ACTION_INTENT.UPDATE_SECOND_DRIVER).toBe("CRITICAL_EDIT");
       expect(ACTION_INTENT.UPDATE_RETURN).toBe("SAFE_EDIT");
       expect(ACTION_INTENT.DELETE).toBe("ORDER_DELETED");
+    });
+  });
+
+  describe("getActionFromChangedFields", () => {
+    it("maps secondDriver change to UPDATE_SECOND_DRIVER", () => {
+      expect(getActionFromChangedFields(["secondDriver"])).toBe("UPDATE_SECOND_DRIVER");
     });
   });
 
   describe("isCriticalAction", () => {
     it("identifies critical actions", () => {
       expect(isCriticalAction("UPDATE_DATES")).toBe(true);
+      expect(isCriticalAction("UPDATE_SECOND_DRIVER")).toBe(true);
       expect(isCriticalAction("UPDATE_PRICING")).toBe(true);
       expect(isCriticalAction("DELETE")).toBe(true);
     });
@@ -286,6 +295,11 @@ describe("orderNotificationPolicy", () => {
       expect(isActionAllowedByAccess("UPDATE_DATES", createAccess({ canEditPickupDate: true, canEditReturnDate: false }))).toBe(true);
       expect(isActionAllowedByAccess("UPDATE_DATES", createAccess({ canEditPickupDate: false, canEditReturnDate: true }))).toBe(true);
       expect(isActionAllowedByAccess("UPDATE_DATES", createAccess({ canEditPickupDate: false, canEditReturnDate: false }))).toBe(false);
+    });
+
+    it("UPDATE_SECOND_DRIVER requires canEdit", () => {
+      expect(isActionAllowedByAccess("UPDATE_SECOND_DRIVER", createAccess({ canEdit: true }))).toBe(true);
+      expect(isActionAllowedByAccess("UPDATE_SECOND_DRIVER", createAccess({ canEdit: false }))).toBe(false);
     });
 
     it("UPDATE_RETURN requires canEditReturn", () => {

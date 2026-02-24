@@ -56,6 +56,10 @@ const OrderSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  regNumber: {
+    type: String,
+    default: "",
+  },
   confirmed: {
     type: Boolean,
     default: false,
@@ -211,6 +215,7 @@ OrderSchema.pre("save", async function (next) {
 
   if (car) {
     this.carNumber = car.carNumber;
+    this.regNumber = car.regNumber || "";
     this.carModel = car.model;
 
     // Новый алгоритм расчёта итоговой цены
@@ -252,6 +257,16 @@ if (Order?.schema && !Order.schema.path("IsConfirmedEmailSent")) {
     IsConfirmedEmailSent: {
       type: Boolean,
       default: false,
+    },
+  });
+}
+
+// HMR/cache safety: ensure regNumber exists on cached model schema.
+if (Order?.schema && !Order.schema.path("regNumber")) {
+  Order.schema.add({
+    regNumber: {
+      type: String,
+      default: "",
     },
   });
 }

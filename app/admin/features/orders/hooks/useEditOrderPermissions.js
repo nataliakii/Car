@@ -15,6 +15,7 @@
  */
 
 import { useMemo } from "react";
+import { ORDER_FIELD_KEYS } from "@/domain/orders/orderPermissions";
 
 /**
  * Default access when useOrderAccess returns null (e.g. no session).
@@ -67,7 +68,7 @@ export function useEditOrderPermissions(order, currentUser, isViewOnly = false, 
       customerName: a.canEditClientPII,
       phone: a.canEditClientPII,
       email: a.canEditClientPII,
-      secondDriver: a.canEdit,
+      [ORDER_FIELD_KEYS.SECOND_DRIVER]: a.canEdit,
       Viber: a.canEditClientPII,
       Whatsapp: a.canEditClientPII,
       Telegram: a.canEditClientPII,

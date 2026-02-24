@@ -17,12 +17,14 @@
  * - Как отправляем → orderNotificationDispatcher.js
  */
 
+import { ORDER_FIELD_KEYS } from "./orderPermissions";
+
 // ════════════════════════════════════════════════════════════════
 // TYPES (JSDoc)
 // ════════════════════════════════════════════════════════════════
 
 /**
- * @typedef {"CREATE" | "CONFIRM" | "UNCONFIRM" | "UPDATE_DATES" | "UPDATE_RETURN" | "UPDATE_INSURANCE" | "UPDATE_PRICING" | "DELETE"} OrderAction
+ * @typedef {"CREATE" | "CONFIRM" | "UNCONFIRM" | "UPDATE_DATES" | "UPDATE_SECOND_DRIVER" | "UPDATE_RETURN" | "UPDATE_INSURANCE" | "UPDATE_PRICING" | "DELETE"} OrderAction
  */
 
 /**
@@ -65,6 +67,7 @@ export const ACTION_INTENT = {
   CONFIRM: "ORDER_CONFIRMED",
   UNCONFIRM: "ORDER_UNCONFIRMED",
   UPDATE_DATES: "CRITICAL_EDIT",
+  UPDATE_SECOND_DRIVER: "CRITICAL_EDIT",
   UPDATE_PRICING: "CRITICAL_EDIT",
   UPDATE_RETURN: "SAFE_EDIT",
   UPDATE_INSURANCE: "SAFE_EDIT",
@@ -74,7 +77,12 @@ export const ACTION_INTENT = {
 /**
  * Критические действия — требуют усиленного уведомления.
  */
-const CRITICAL_ACTIONS = ["UPDATE_DATES", "UPDATE_PRICING", "DELETE"];
+const CRITICAL_ACTIONS = [
+  "UPDATE_DATES",
+  "UPDATE_SECOND_DRIVER",
+  "UPDATE_PRICING",
+  "DELETE",
+];
 
 /**
  * Безопасные действия — разрешены для ADMIN на confirmed client orders.
@@ -238,6 +246,11 @@ export function getActionFromChangedFields(changedFields, changes = {}) {
       fields.has("timeIn") || fields.has("timeOut") || fields.has("numberOfDays")) {
     return "UPDATE_DATES";
   }
+
+  // Опция второго водителя (важно для цены/условий)
+  if (fields.has(ORDER_FIELD_KEYS.SECOND_DRIVER)) {
+    return "UPDATE_SECOND_DRIVER";
+  }
   
   // Цена
   if (fields.has("totalPrice") || fields.has("OverridePrice")) {
@@ -298,6 +311,8 @@ export function isActionAllowedByAccess(action, access) {
   switch (action) {
     case "UPDATE_DATES":
       return access.canEditPickupDate === true || access.canEditReturnDate === true;
+    case "UPDATE_SECOND_DRIVER":
+      return access.canEdit === true;
     case "UPDATE_RETURN":
       return access.canEditReturn === true;
     case "UPDATE_INSURANCE":
