@@ -835,8 +835,9 @@ export default function BigCalendar({ cars, showLegend = true }) {
         onClose={handleClose}
         sx={{
           display: "flex",
-          alignItems: "center",
+          alignItems: { xs: "flex-start", sm: "center" },
           justifyContent: "center",
+          overflowY: { xs: "auto", sm: "hidden" },
         }}
       >
         <Box
@@ -848,12 +849,13 @@ export default function BigCalendar({ cars, showLegend = true }) {
           }}
           sx={{
             display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            alignItems: { xs: "flex-start", sm: "center" },
+            justifyContent: { xs: "flex-start", sm: "center" },
             width: "100%",
-            height: "100%",
-            overflow: "hidden",
-            p: { xs: 1, sm: 2 },
+            minHeight: "100%",
+            overflowY: "auto",
+            overflowX: "hidden",
+            p: { xs: 0.75, sm: 2 },
           }}
         >
           <Grid
@@ -865,9 +867,13 @@ export default function BigCalendar({ cars, showLegend = true }) {
             sx={{
               width: "100%",
               maxWidth: { xs: "95vw", sm: "92vw", md: "1100px" },
-              maxHeight: "100%",
-              overflowY: selectedOrders.length > 1 ? "auto" : "visible",
+              maxHeight: { xs: "none", sm: "100%" },
+              overflowY: {
+                xs: "visible",
+                sm: selectedOrders.length > 1 ? "auto" : "visible",
+              },
               overflowX: "hidden",
+              my: { xs: 0.5, sm: 0 },
               "&::-webkit-scrollbar": {
                 width: "4px",
               },

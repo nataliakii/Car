@@ -16,6 +16,7 @@ import {
   FormControlLabel,
   Autocomplete,
   useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import {
   ConfirmButton,
@@ -97,24 +98,31 @@ const EditOrderModal = ({
   const { data: session } = useSession();
   const { t, i18n } = useTranslation();
   const theme = useTheme();
+  const isMobileView = useMediaQuery(theme.breakpoints.down("sm"));
   const secondDriverPriceLabelValue = getSecondDriverPriceLabelValue();
   const isMultiOrderView = Number(ordersInBatch) > 1;
   const isCompactBatchLayout = isMultiOrderView;
+  const isCompactLayout = isCompactBatchLayout || isMobileView;
+  const useInlineFooterActions = isMultiOrderView && !isMobileView;
   const formMetrics = useMemo(() => {
-    const compact = isCompactBatchLayout;
+    const compact = isCompactLayout;
     return {
       fieldSize: compact ? "small" : "medium",
-      fieldMinHeight: { xs: 48, md: compact ? 38 : 44 },
+      fieldMinHeight: { xs: compact ? 44 : 48, md: isCompactBatchLayout ? 38 : 44 },
       gridTemplateColumns: {
         xs: "1fr",
         sm: "repeat(2, minmax(0, 1fr))",
         md: "repeat(4, minmax(0, 1fr))",
       },
-      gridGap: { xs: 1, sm: compact ? 0.875 : 1, md: compact ? 0.875 : 1 },
+      gridGap: {
+        xs: compact ? 0.75 : 1,
+        sm: isCompactBatchLayout ? 0.875 : 1,
+        md: isCompactBatchLayout ? 0.875 : 1,
+      },
       sectionMarginBottom: {
-        xs: 1,
-        sm: compact ? 0.75 : 1,
-        md: compact ? 0.5 : 0.75,
+        xs: compact ? 0.75 : 1,
+        sm: isCompactBatchLayout ? 0.75 : 1,
+        md: isCompactBatchLayout ? 0.5 : 0.75,
       },
       inputPaddingY: compact ? theme.spacing(0.75) : theme.spacing(1),
       inputPaddingX: compact ? theme.spacing(1.25) : theme.spacing(1.5),
@@ -133,7 +141,7 @@ const EditOrderModal = ({
       lineHeight: compact
         ? theme.typography.body2.lineHeight
         : theme.typography.body1.lineHeight,
-      compactActionButtonSx: compact
+      compactActionButtonSx: isCompactBatchLayout
         ? {
             minHeight: 34,
             fontSize: theme.typography.caption.fontSize,
@@ -142,7 +150,7 @@ const EditOrderModal = ({
         : {},
       actionButtonsGap: compact ? 0.75 : 1,
     };
-  }, [isCompactBatchLayout, theme]);
+  }, [isCompactBatchLayout, isCompactLayout, theme]);
   const unifiedGridSx = useMemo(
     () => ({
       display: "grid",
@@ -366,17 +374,17 @@ const EditOrderModal = ({
   const [isSendingConfirmation, setIsSendingConfirmation] = useState(false);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [isHistoryPanelVisible, setIsHistoryPanelVisible] = useState(
-    !isMultiOrderView
+    !isMultiOrderView && !isMobileView
   );
 
   useEffect(() => {
-    if (isMultiOrderView) {
+    if (isMultiOrderView || isMobileView) {
       setIsHistoryPanelVisible(false);
       setIsHistoryExpanded(false);
       return;
     }
     setIsHistoryPanelVisible(true);
-  }, [isMultiOrderView, order?._id]);
+  }, [isMultiOrderView, isMobileView, order?._id]);
 
   const handleConfirmationToggle = async () => {
     if (permissions.viewOnly || !permissions.canConfirm) return;
@@ -812,11 +820,11 @@ const EditOrderModal = ({
           // Центрирование модального окна
           mx: "auto",
           // Ограничение высоты с учётом мобильных устройств
-          maxHeight: { xs: "95vh", sm: "calc(100vh - 24px)" },
-          overflow: { xs: "auto", sm: "hidden" },
-          display: "flex",
+          maxHeight: isMobileView ? "none" : { xs: "95vh", sm: "calc(100vh - 24px)" },
+          overflow: isMobileView ? "visible" : { xs: "auto", sm: "hidden" },
+          display: isMobileView ? "block" : "flex",
           flexDirection: "column",
-          minHeight: 0,
+          minHeight: isMobileView ? "auto" : 0,
           // Стили для конфликтных заказов
           border: isConflictOrder
             ? isMultiOrderView
@@ -828,7 +836,7 @@ const EditOrderModal = ({
             isConflictOrder && !isMultiOrderView ? "pulse 2s infinite" : "none",
           // Скругление углов для мобильных
           borderRadius: { xs: 2, sm: 1 },
-          ...(isCompactBatchLayout && {
+          ...(isCompactLayout && {
             "& .MuiInputLabel-root": { fontSize: formMetrics.labelFontSize },
             "& .MuiOutlinedInput-root": {
               minHeight: formMetrics.fieldMinHeight,
@@ -1071,9 +1079,9 @@ const EditOrderModal = ({
 
             <Box
               sx={{
-                flex: 1,
-                minHeight: 0,
-                overflowY: { xs: "visible", sm: "auto" },
+                flex: isMobileView ? "none" : 1,
+                minHeight: isMobileView ? "auto" : 0,
+                overflowY: isMobileView ? "visible" : { xs: "visible", sm: "auto" },
                 pr: { xs: 0, sm: 0.5 },
                 "& .MuiTextField-root .MuiOutlinedInput-root, & .MuiFormControl-root .MuiOutlinedInput-root":
                   {
@@ -1103,7 +1111,7 @@ const EditOrderModal = ({
                   sx={{
                     display: "flex",
                     gap: formMetrics.actionButtonsGap,
-                    flexDirection: "row",
+                    flexDirection: { xs: "column", sm: "row" },
                   }}
                 >
                   <ActionButton
@@ -1188,7 +1196,7 @@ const EditOrderModal = ({
                     </Box>
                   )}
                 {isCurrentUserSuperAdmin &&
-                  (isMultiOrderView && !isHistoryPanelVisible ? (
+                  (!isHistoryPanelVisible ? (
                     <Box
                       sx={{
                         mt: 0.5,
@@ -1261,7 +1269,7 @@ const EditOrderModal = ({
                                 : t("order.confirmationEmailHistoryShow")}
                             </Button>
                           )}
-                          {isMultiOrderView && (
+                          {(isMultiOrderView || isMobileView) && (
                             <Button
                               size="small"
                               onClick={() => {
@@ -1444,6 +1452,11 @@ const EditOrderModal = ({
                 <Box
                   sx={{
                     ...unifiedGridSx,
+                    gridTemplateColumns: {
+                      xs: "repeat(2, minmax(0, 1fr))",
+                      sm: formMetrics.gridTemplateColumns.sm,
+                      md: formMetrics.gridTemplateColumns.md,
+                    },
                     mb: formMetrics.sectionMarginBottom,
                   }}
                 >
@@ -2045,8 +2058,9 @@ const EditOrderModal = ({
                         display: "flex",
                         alignItems: "center",
                         gap: 0,
-                        flexWrap: "nowrap",
-                        overflowX: "auto",
+                        flexWrap: { xs: "wrap", md: "nowrap" },
+                        rowGap: { xs: 0.25, md: 0 },
+                        overflowX: { xs: "visible", md: "auto" },
                         "& .MuiFormControlLabel-root": {
                           flexShrink: 0,
                           whiteSpace: "nowrap",
@@ -2232,30 +2246,31 @@ const EditOrderModal = ({
                 pt: { xs: 0, sm: 1 },
                 borderTop: { xs: "none", sm: "1px solid" },
                 borderColor: { sm: "divider" },
+                position: "static",
               }}
             >
               <Box
                 sx={{
                   display: "flex",
-                  flexDirection: isMultiOrderView
+                  flexDirection: useInlineFooterActions
                     ? "row"
                     : { xs: "column", sm: "row" },
-                  justifyContent: { xs: "center", sm: "space-between" },
+                  justifyContent: { xs: "flex-start", sm: "space-between" },
                   alignItems: { xs: "stretch", sm: "center" },
-                  gap: isMultiOrderView ? 1 : { xs: 1, sm: 0 },
+                  gap: useInlineFooterActions ? 1 : { xs: 1, sm: 0 },
                 }}
               >
                 <CancelButton
                   onClick={onCloseModalEdit}
                   label={t("basic.cancel")}
                   sx={{
-                    order: isMultiOrderView ? 1 : { xs: 3, sm: 1 },
-                    width: isMultiOrderView
+                    order: useInlineFooterActions ? 1 : { xs: 3, sm: 1 },
+                    width: useInlineFooterActions
                       ? "33%"
                       : { xs: "100%", sm: "auto" },
-                    minHeight: isMultiOrderView ? 34 : undefined,
-                    fontSize: isMultiOrderView ? "0.72rem" : undefined,
-                    px: isMultiOrderView ? 1 : undefined,
+                    minHeight: useInlineFooterActions ? 34 : undefined,
+                    fontSize: useInlineFooterActions ? "0.72rem" : undefined,
+                    px: useInlineFooterActions ? 1 : undefined,
                     whiteSpace: "nowrap",
                   }}
                 />
@@ -2263,12 +2278,14 @@ const EditOrderModal = ({
                   loading={isUpdating}
                   disabled={permissions.viewOnly}
                   sx={{
-                    mx: isMultiOrderView ? 0 : { xs: 0, sm: 2 },
-                    width: isMultiOrderView ? "34%" : { xs: "100%", sm: "40%" },
-                    order: isMultiOrderView ? 2 : { xs: 1, sm: 2 },
-                    minHeight: isMultiOrderView ? 34 : undefined,
-                    fontSize: isMultiOrderView ? "0.72rem" : undefined,
-                    px: isMultiOrderView ? 1 : undefined,
+                    mx: useInlineFooterActions ? 0 : { xs: 0, sm: 2 },
+                    width: useInlineFooterActions
+                      ? "34%"
+                      : { xs: "100%", sm: "40%" },
+                    order: useInlineFooterActions ? 2 : { xs: 1, sm: 2 },
+                    minHeight: useInlineFooterActions ? 34 : undefined,
+                    fontSize: useInlineFooterActions ? "0.72rem" : undefined,
+                    px: useInlineFooterActions ? 1 : undefined,
                     whiteSpace: "nowrap",
                   }}
                   onClick={async () => {
@@ -2307,11 +2324,13 @@ const EditOrderModal = ({
                   disabled={permissions.viewOnly || !permissions.canDelete}
                   label={t("order.deleteOrder")}
                   sx={{
-                    width: isMultiOrderView ? "33%" : { xs: "100%", sm: "30%" },
-                    order: isMultiOrderView ? 3 : { xs: 2, sm: 3 },
-                    minHeight: isMultiOrderView ? 34 : undefined,
-                    fontSize: isMultiOrderView ? "0.72rem" : undefined,
-                    px: isMultiOrderView ? 1 : undefined,
+                    width: useInlineFooterActions
+                      ? "33%"
+                      : { xs: "100%", sm: "30%" },
+                    order: useInlineFooterActions ? 3 : { xs: 2, sm: 3 },
+                    minHeight: useInlineFooterActions ? 34 : undefined,
+                    fontSize: useInlineFooterActions ? "0.72rem" : undefined,
+                    px: useInlineFooterActions ? 1 : undefined,
                     whiteSpace: "nowrap",
                     opacity: !permissions.canDelete ? 0.5 : 1,
                     cursor: !permissions.canDelete ? "not-allowed" : "pointer",
