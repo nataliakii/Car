@@ -424,6 +424,76 @@ describe("🔐 canPendingOrderBeConfirmed", () => {
       expect(result.message).toContain("Мария");
   });
 
+  it("для overlap на границе выбирает ближайший gap, а не дальний отрицательный", () => {
+    const pendingOrder = createMockOrder({
+      id: "order-1",
+      customerName: "Vadym",
+      confirmed: false,
+      startDate: "2026-03-04",
+      startTime: "11:58",
+      endDate: "2026-03-07",
+      endTime: "19:00",
+    });
+
+    const confirmedOrder = createMockOrder({
+      id: "order-2",
+      customerName: "Karolina",
+      confirmed: true,
+      startDate: "2026-03-01",
+      startTime: "14:00",
+      endDate: "2026-03-04",
+      endTime: "12:00",
+    });
+
+    const result = canPendingOrderBeConfirmed({
+      pendingOrder,
+      allOrders: [pendingOrder, confirmedOrder],
+      bufferHours: 1,
+    });
+
+    expect(result.canConfirm).toBe(false);
+    expect(result.conflictTime).toBe("pickup");
+    expect(result.actualGapMinutes).toBe(-2);
+    expect(result.message).toContain("Забор в 11:58 конфликтует с возвратом в 12:00");
+    expect(result.message).not.toContain("-149 ч");
+  });
+
+  it("для буферного конфликта 12:58 считает реальный gap как +58 минут", () => {
+    const pendingOrder = createMockOrder({
+      id: "order-1",
+      customerName: "Vadym",
+      confirmed: false,
+      startDate: "2026-03-01",
+      startTime: "14:00",
+      endDate: "2026-03-04",
+      endTime: "12:00",
+    });
+
+    const confirmedOrder = createMockOrder({
+      id: "order-2",
+      customerName: "Karolina",
+      confirmed: true,
+      startDate: "2026-03-04",
+      startTime: "12:58",
+      endDate: "2026-03-07",
+      endTime: "19:00",
+    });
+
+    const result = canPendingOrderBeConfirmed({
+      pendingOrder,
+      allOrders: [pendingOrder, confirmedOrder],
+      bufferHours: 1,
+    });
+
+    expect(result.canConfirm).toBe(false);
+    expect(result.conflictTime).toBe("return");
+    expect(result.actualGapMinutes).toBe(58);
+    expect(result.message).toContain(
+      "Возврат в 12:00 конфликтует с забором в 12:58"
+    );
+    expect(result.message).toContain("58 мин");
+  });
+
   it("игнорирует другие pending заказы", () => {
     const pendingOrder = createMockOrder({
       id: "order-1",

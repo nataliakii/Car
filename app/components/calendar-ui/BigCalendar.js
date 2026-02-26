@@ -858,8 +858,9 @@ export default function BigCalendar({ cars, showLegend = true }) {
         >
           <Grid
             container
-            spacing={selectedOrders.length > 1 ? 1 : 0}
+            spacing={selectedOrders.length > 1 ? 2 : 0}
             justifyContent="center"
+            alignItems="flex-start"
             onClick={(e) => e.stopPropagation()} // Предотвращаем закрытие при клике на контент
             sx={{
               width: "100%",
@@ -891,14 +892,15 @@ export default function BigCalendar({ cars, showLegend = true }) {
                   item
                   key={order._id}
                   xs={12}
+                  sm={selectedOrders.length > 1 ? 6 : 12}
                   md={
                     selectedOrders.length === 1
                       ? 12
                       : selectedOrders.length === 2
                       ? 6
-                      : selectedOrders.length >= 3 && selectedOrders.length <= 4
-                      ? 3
-                      : 2
+                      : selectedOrders.length === 3
+                      ? 4
+                      : 3
                   }
                 >
                   <EditOrderModal
@@ -911,6 +913,7 @@ export default function BigCalendar({ cars, showLegend = true }) {
                     startEndDates={startEndDates}
                     cars={cars}
                     isViewOnly={isPast(order.rentalEndDate)}
+                    ordersInBatch={selectedOrders.length}
                   />
                 </Grid>
               ))}

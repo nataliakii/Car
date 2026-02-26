@@ -6,6 +6,7 @@ import {
   TextField,
   CircularProgress,
   Divider,
+  Alert,
   FormControl,
   InputLabel,
   Select,
@@ -22,14 +23,12 @@ import {
   DeleteButton,
   ActionButton,
 } from "@/app/components/ui";
-import { RenderTextField } from "@/app/components/ui/inputs/Fields";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 
 import Snackbar from "@/app/components/ui/feedback/Snackbar";
 import { useMainContext } from "@app/Context";
-import TimePicker from "@/app/components/calendar-ui/MuiTimePicker";
 import { BufferSettingsLinkifiedText } from "@/app/components/ui";
 import { useEditOrderConflicts } from "../hooks/useEditOrderConflicts";
 import { useEditOrderPermissions } from "../hooks/useEditOrderPermissions";
@@ -92,11 +91,75 @@ const EditOrderModal = ({
   startEndDates,
   cars, // <-- список автомобилей
   isViewOnly, // <-- режим просмотра (передаётся из BigCalendar для завершённых заказов)
+  ordersInBatch = 1, // Количество одновременно открытых модалок
 }) => {
   const { allOrders, fetchAndUpdateOrders, company } = useMainContext();
   const { data: session } = useSession();
   const { t, i18n } = useTranslation();
+  const theme = useTheme();
   const secondDriverPriceLabelValue = getSecondDriverPriceLabelValue();
+  const isMultiOrderView = Number(ordersInBatch) > 1;
+  const isCompactBatchLayout = isMultiOrderView;
+  const formMetrics = useMemo(() => {
+    const compact = isCompactBatchLayout;
+    return {
+      fieldSize: compact ? "small" : "medium",
+      fieldMinHeight: { xs: 48, md: compact ? 38 : 44 },
+      gridTemplateColumns: {
+        xs: "1fr",
+        sm: "repeat(2, minmax(0, 1fr))",
+        md: "repeat(4, minmax(0, 1fr))",
+      },
+      gridGap: { xs: 1, sm: compact ? 0.875 : 1, md: compact ? 0.875 : 1 },
+      sectionMarginBottom: {
+        xs: 1,
+        sm: compact ? 0.75 : 1,
+        md: compact ? 0.5 : 0.75,
+      },
+      inputPaddingY: compact ? theme.spacing(0.75) : theme.spacing(1),
+      inputPaddingX: compact ? theme.spacing(1.25) : theme.spacing(1.5),
+      inputFontSize: compact
+        ? theme.typography.body2.fontSize
+        : theme.typography.body1.fontSize,
+      body1FontSize: compact
+        ? theme.typography.body2.fontSize
+        : theme.typography.body1.fontSize,
+      body2FontSize: compact
+        ? theme.typography.caption.fontSize
+        : theme.typography.body2.fontSize,
+      labelFontSize: compact
+        ? theme.typography.caption.fontSize
+        : theme.typography.body2.fontSize,
+      lineHeight: compact
+        ? theme.typography.body2.lineHeight
+        : theme.typography.body1.lineHeight,
+      compactActionButtonSx: compact
+        ? {
+            minHeight: 34,
+            fontSize: theme.typography.caption.fontSize,
+            py: 0.5,
+          }
+        : {},
+      actionButtonsGap: compact ? 0.75 : 1,
+    };
+  }, [isCompactBatchLayout, theme]);
+  const unifiedGridSx = useMemo(
+    () => ({
+      display: "grid",
+      gridTemplateColumns: formMetrics.gridTemplateColumns,
+      gap: formMetrics.gridGap,
+      alignItems: "start",
+    }),
+    [formMetrics.gridTemplateColumns, formMetrics.gridGap]
+  );
+  const unifiedFieldSx = useMemo(
+    () => ({
+      "& .MuiInputBase-root": {
+        minHeight: formMetrics.fieldMinHeight,
+      },
+    }),
+    [formMetrics.fieldMinHeight]
+  );
 
   // Get current user for permission checks
   const currentUser = useMemo(() => {
@@ -302,6 +365,18 @@ const EditOrderModal = ({
   const [confirmToggleUpdating, setConfirmToggleUpdating] = useState(false);
   const [isSendingConfirmation, setIsSendingConfirmation] = useState(false);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+  const [isHistoryPanelVisible, setIsHistoryPanelVisible] = useState(
+    !isMultiOrderView
+  );
+
+  useEffect(() => {
+    if (isMultiOrderView) {
+      setIsHistoryPanelVisible(false);
+      setIsHistoryExpanded(false);
+      return;
+    }
+    setIsHistoryPanelVisible(true);
+  }, [isMultiOrderView, order?._id]);
 
   const handleConfirmationToggle = async () => {
     if (permissions.viewOnly || !permissions.canConfirm) return;
@@ -408,9 +483,7 @@ const EditOrderModal = ({
       return;
     }
 
-    const locale = String(
-      i18n?.resolvedLanguage || i18n?.language || "en"
-    )
+    const locale = String(i18n?.resolvedLanguage || i18n?.language || "en")
       .split("-")[0]
       .toLowerCase();
 
@@ -621,8 +694,8 @@ const EditOrderModal = ({
     const history = Array.isArray(editedOrder?.confirmationEmailHistory)
       ? editedOrder.confirmationEmailHistory
       : Array.isArray(order?.confirmationEmailHistory)
-        ? order.confirmationEmailHistory
-        : [];
+      ? order.confirmationEmailHistory
+      : [];
     return [...history].sort((a, b) => {
       const aTime = a?.sentAt ? new Date(a.sentAt).getTime() : 0;
       const bTime = b?.sentAt ? new Date(b.sentAt).getTime() : 0;
@@ -662,13 +735,19 @@ const EditOrderModal = ({
       };
     }
 
-    const currentEffectivePrice = normalizeNumber(getEffectivePrice(editedOrder));
-    const lastEffectivePrice = normalizeNumber(lastSnapshot?.effectiveTotalPrice);
+    const currentEffectivePrice = normalizeNumber(
+      getEffectivePrice(editedOrder)
+    );
+    const lastEffectivePrice = normalizeNumber(
+      lastSnapshot?.effectiveTotalPrice
+    );
     const priceChanged = currentEffectivePrice !== lastEffectivePrice;
 
     const datesChanged =
-      dateKey(editedOrder?.rentalStartDate) !== dateKey(lastSnapshot?.rentalStartDate) ||
-      dateKey(editedOrder?.rentalEndDate) !== dateKey(lastSnapshot?.rentalEndDate);
+      dateKey(editedOrder?.rentalStartDate) !==
+        dateKey(lastSnapshot?.rentalStartDate) ||
+      dateKey(editedOrder?.rentalEndDate) !==
+        dateKey(lastSnapshot?.rentalEndDate);
 
     const timesChanged =
       timeKey(editedOrder?.timeIn) !== timeKey(lastSnapshot?.timeIn) ||
@@ -683,11 +762,15 @@ const EditOrderModal = ({
     Boolean(editedOrder?._id) &&
     hasCustomerEmail &&
     (!resendState.hasPrevious || resendState.hasChanges);
+  const isPickupAirport =
+    String(editedOrder?.placeIn || "")
+      .trim()
+      .toLowerCase() === "airport";
   const sendConfirmationEmailDisabledReason = !hasCustomerEmail
     ? t("order.sendConfirmationEmailNoEmail")
     : resendState.hasPrevious && !resendState.hasChanges
-      ? t("order.sendConfirmationEmailNoChanges")
-      : "";
+    ? t("order.sendConfirmationEmailNoChanges")
+    : "";
 
   const formatHistoryDateTime = useCallback((value) => {
     if (!value) return "—";
@@ -715,10 +798,16 @@ const EditOrderModal = ({
       <Paper
         sx={{
           // Адаптивная ширина для разных экранов
-          width: { xs: "100%", sm: 560, md: 760, lg: 920 },
-          maxWidth: { xs: "95vw", sm: "92vw", lg: "1000px" },
+          width: isCompactBatchLayout
+            ? { xs: "100%", sm: "100%" }
+            : { xs: "100%", sm: 560, md: 760, lg: 920 },
+          maxWidth: isCompactBatchLayout
+            ? { xs: "95vw", sm: "100%" }
+            : { xs: "95vw", sm: "92vw", lg: "1000px" },
           // Адаптивные отступы
-          p: { xs: 1.5, sm: 2, md: 3 },
+          p: isCompactBatchLayout
+            ? { xs: 1.25, sm: 1.25, md: 1.5 }
+            : { xs: 1.5, sm: 2, md: 3 },
           pt: { xs: 1, sm: 1.5, md: 1.5 },
           // Центрирование модального окна
           mx: "auto",
@@ -729,11 +818,36 @@ const EditOrderModal = ({
           flexDirection: "column",
           minHeight: 0,
           // Стили для конфликтных заказов
-          border: isConflictOrder ? "4px solid" : "none",
+          border: isConflictOrder
+            ? isMultiOrderView
+              ? "2px solid"
+              : "4px solid"
+            : "none",
           borderColor: isConflictOrder ? "error.main" : "transparent",
-          animation: isConflictOrder ? "pulse 2s infinite" : "none",
+          animation:
+            isConflictOrder && !isMultiOrderView ? "pulse 2s infinite" : "none",
           // Скругление углов для мобильных
           borderRadius: { xs: 2, sm: 1 },
+          ...(isCompactBatchLayout && {
+            "& .MuiInputLabel-root": { fontSize: formMetrics.labelFontSize },
+            "& .MuiOutlinedInput-root": {
+              minHeight: formMetrics.fieldMinHeight,
+            },
+            "& .MuiInputBase-input": {
+              fontSize: formMetrics.inputFontSize,
+              lineHeight: formMetrics.lineHeight,
+            },
+            "& .MuiSelect-select": {
+              fontSize: formMetrics.inputFontSize,
+              lineHeight: formMetrics.lineHeight,
+            },
+            "& .MuiTypography-body1": { fontSize: formMetrics.body1FontSize },
+            "& .MuiTypography-body2": { fontSize: formMetrics.body2FontSize },
+            "& .MuiTypography-caption": { fontSize: formMetrics.labelFontSize },
+            "& .MuiFormControlLabel-label": {
+              fontSize: formMetrics.labelFontSize,
+            },
+          }),
         }}
       >
         {loading ? (
@@ -750,194 +864,209 @@ const EditOrderModal = ({
         ) : (
           <>
             <Box sx={{ flexShrink: 0 }}>
-            <Typography
-              variant="h6"
-              color="primary.main"
-              sx={{
-                letterSpacing: "-0.5px",
-                fontSize: { xs: "1rem", sm: "1.15rem", md: "1.3rem" },
-                textAlign: { xs: "center", sm: "left" },
-                mb: { xs: 0.5, sm: 0 },
-              }}
-            >
-              {permissions.viewOnly
-                ? "Просмотреть заказ"
-                : t("order.editOrder")}{" "}
-              №{order?.orderNumber ? order.orderNumber.slice(2, -2) : ""}
-              {(() => {
-                // Найти автомобиль по id заказа
-                const carObj = cars?.find(
-                  (c) => c._id === (order?.car || editedOrder?.car)
-                );
-                if (carObj) {
-                  return ` (${carObj.model} ${carObj.regNumber})`;
-                }
-                return "";
-              })()}
-            </Typography>
-            {/* Количество дней и стоимость */}
-            <Box
-              display="flex"
-              alignItems="center"
-              justifyContent={{ xs: "center", sm: "flex-start" }}
-              flexWrap="wrap"
-              sx={{ mb: 1, gap: { xs: 0.5, sm: 0 } }}
-            >
-              <Typography variant="body1">
-                {t("order.daysNumber")}{" "}
-                <Box
-                  component="span"
-                  sx={{ color: "primary.dark", fontWeight: 700 }}
-                >
-                  {editedOrder?.numberOfDays}
-                </Box>{" "}
-                | {t("order.price")}
+              <Typography
+                variant="h6"
+                color="primary.main"
+                sx={{
+                  letterSpacing: "-0.5px",
+                  fontSize: isCompactBatchLayout
+                    ? { xs: "1rem", sm: "0.95rem", md: "1.05rem" }
+                    : { xs: "1rem", sm: "1.15rem", md: "1.3rem" },
+                  textAlign: { xs: "center", sm: "left" },
+                  mb: { xs: 0.5, sm: 0 },
+                }}
+              >
+                {permissions.viewOnly
+                  ? "Просмотреть заказ"
+                  : t("order.editOrder")}{" "}
+                №{order?.orderNumber ? order.orderNumber.slice(2, -2) : ""}
+                {(() => {
+                  // Найти автомобиль по id заказа
+                  const carObj = cars?.find(
+                    (c) => c._id === (order?.car || editedOrder?.car)
+                  );
+                  if (carObj) {
+                    return ` (${carObj.model} ${carObj.regNumber})`;
+                  }
+                  return "";
+                })()}
               </Typography>
-              {(() => {
-                /**
-                 * PRICE FLOW (IMPORTANT)
-                 *
-                 * totalPrice
-                 *   - ALWAYS auto-calculated price
-                 *   - Updated ONLY by backend recalculation
-                 *
-                 * OverridePrice
-                 *   - Manual price set by admin
-                 *   - NEVER changed automatically
-                 *
-                 * effectivePrice =
-                 *   OverridePrice !== null ? OverridePrice : totalPrice
-                 *
-                 * UI rules:
-                 * - Inline edit → sets OverridePrice
-                 * - Recalculate button → updates totalPrice ONLY
-                 * - UI displays effectivePrice
-                 * - Admin can reset OverridePrice explicitly
-                 */
-                const effectivePrice = getEffectivePrice(editedOrder);
-                const hasManualOverride =
-                  editedOrder?.OverridePrice !== null &&
-                  editedOrder?.OverridePrice !== undefined;
+              {/* Количество дней и стоимость */}
+              <Box
+                display="flex"
+                alignItems="center"
+                justifyContent={{ xs: "center", sm: "flex-start" }}
+                flexWrap="wrap"
+                sx={{ mb: 1, gap: { xs: 0.5, sm: 0 } }}
+              >
+                <Typography variant="body1">
+                  {t("order.daysNumber")}{" "}
+                  <Box
+                    component="span"
+                    sx={{ color: "primary.dark", fontWeight: 700 }}
+                  >
+                    {editedOrder?.numberOfDays}
+                  </Box>{" "}
+                  | {t("order.price")}
+                </Typography>
+                {(() => {
+                  /**
+                   * PRICE FLOW (IMPORTANT)
+                   *
+                   * totalPrice
+                   *   - ALWAYS auto-calculated price
+                   *   - Updated ONLY by backend recalculation
+                   *
+                   * OverridePrice
+                   *   - Manual price set by admin
+                   *   - NEVER changed automatically
+                   *
+                   * effectivePrice =
+                   *   OverridePrice !== null ? OverridePrice : totalPrice
+                   *
+                   * UI rules:
+                   * - Inline edit → sets OverridePrice
+                   * - Recalculate button → updates totalPrice ONLY
+                   * - UI displays effectivePrice
+                   * - Admin can reset OverridePrice explicitly
+                   */
+                  const effectivePrice = getEffectivePrice(editedOrder);
+                  const hasManualOverride =
+                    editedOrder?.OverridePrice !== null &&
+                    editedOrder?.OverridePrice !== undefined;
 
-                return (
-                  <>
-                    <TextField
-                      value={
-                        effectivePrice !== undefined && effectivePrice !== null
-                          ? effectivePrice
-                          : ""
-                      }
-                      onChange={(e) => {
-                        if (
+                  return (
+                    <>
+                      <TextField
+                        value={
+                          effectivePrice !== undefined &&
+                          effectivePrice !== null
+                            ? effectivePrice
+                            : ""
+                        }
+                        onChange={(e) => {
+                          if (
+                            permissions.viewOnly ||
+                            !permissions.fieldPermissions.totalPrice
+                          )
+                            return;
+                          const val = e.target.value.replace(/[^0-9]/g, "");
+                          // 🔧 PRICE ARCHITECTURE: Manual input sets OverridePrice
+                          updateField("totalPrice", val ? Number(val) : 0, {
+                            source: "manual",
+                          });
+                        }}
+                        variant="outlined"
+                        size="small"
+                        inputProps={{
+                          maxLength: 4,
+                          inputMode: "numeric",
+                          pattern: "[0-9]*",
+                        }}
+                        InputProps={{
+                          endAdornment: (
+                            <Box
+                              component="span"
+                              sx={{
+                                fontWeight: 700,
+                                fontSize: 18,
+                                ml: 0,
+                                mr: "-8px",
+                                color: "primary.dark",
+                              }}
+                            >
+                              €
+                            </Box>
+                          ),
+                        }}
+                        sx={{
+                          ml: 1,
+                          width: isCompactBatchLayout ? "78px" : "90px",
+                          ...(isCompactBatchLayout && {
+                            "& .MuiOutlinedInput-root": {
+                              height: 38,
+                              minHeight: 38,
+                            },
+                          }),
+                          "& .MuiInputBase-input": {
+                            fontWeight: 700,
+                            fontSize: isCompactBatchLayout ? 15 : 18,
+                            textAlign: "right",
+                            letterSpacing: 1,
+                            width: isCompactBatchLayout ? "4ch" : "5ch",
+                            padding: isCompactBatchLayout
+                              ? "6px 6px 6px 8px"
+                              : "8px 8px 8px 12px",
+                            boxSizing: "content-box",
+                            color: "primary.dark",
+                          },
+                        }}
+                        disabled={
                           permissions.viewOnly ||
                           !permissions.fieldPermissions.totalPrice
-                        )
-                          return;
-                        const val = e.target.value.replace(/[^0-9]/g, "");
-                        // 🔧 PRICE ARCHITECTURE: Manual input sets OverridePrice
-                        updateField("totalPrice", val ? Number(val) : 0, {
-                          source: "manual",
-                        });
-                      }}
-                      variant="outlined"
-                      size="small"
-                      inputProps={{
-                        maxLength: 4,
-                        inputMode: "numeric",
-                        pattern: "[0-9]*",
-                      }}
-                      InputProps={{
-                        endAdornment: (
-                          <Box
-                            component="span"
+                        }
+                      />
+                      {/* Visual marker for manual override + button to return to auto */}
+                      {hasManualOverride && (
+                        <Box sx={{ ml: 1, mt: 0.5 }}>
+                          <Typography
+                            variant="caption"
                             sx={{
-                              fontWeight: 700,
-                              fontSize: 18,
-                              ml: 0,
-                              mr: "-8px",
-                              color: "primary.dark",
+                              color: "warning.main",
+                              fontSize: "0.7rem",
+                              display: "block",
+                              mb: 0.5,
                             }}
                           >
-                            €
-                          </Box>
-                        ),
-                      }}
-                      sx={{
-                        ml: 1,
-                        width: "90px",
-                        "& .MuiInputBase-input": {
-                          fontWeight: 700,
-                          fontSize: 18,
-                          textAlign: "right",
-                          letterSpacing: 1,
-                          width: "5ch",
-                          padding: "8px 8px 8px 12px",
-                          boxSizing: "content-box",
-                          color: "primary.dark",
-                        },
-                      }}
-                      disabled={
-                        permissions.viewOnly ||
-                        !permissions.fieldPermissions.totalPrice
-                      }
-                    />
-                    {/* Visual marker for manual override + button to return to auto */}
-                    {hasManualOverride && (
-                      <Box sx={{ ml: 1, mt: 0.5 }}>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "warning.main",
-                            fontSize: "0.7rem",
-                            display: "block",
-                            mb: 0.5,
-                          }}
-                        >
-                          ✏️ Manual price (auto: €
-                          {editedOrder.totalPrice?.toFixed(2) || "0"})
-                        </Typography>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="primary"
-                          onClick={() => {
-                            if (
-                              permissions.viewOnly ||
-                              !permissions.fieldPermissions.totalPrice
-                            )
-                              return;
-                            // Return to auto price: use CURRENT totalPrice and clear OverridePrice
-                            // This ensures we use the latest calculated price, not a stale one
-                            updateField("totalPrice", editedOrder.totalPrice, {
-                              source: "auto",
-                              clearOverride: true,
-                            });
-                          }}
-                          sx={{
-                            fontSize: "0.65rem",
-                            py: 0.25,
-                            px: 1,
-                            minWidth: "auto",
-                          }}
-                        >
-                          Вернуть автоматическую цену
-                        </Button>
-                      </Box>
-                    )}
-                  </>
-                );
-              })()}
-            </Box>
+                            ✏️ Manual price (auto: €
+                            {editedOrder.totalPrice?.toFixed(2) || "0"})
+                          </Typography>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="primary"
+                            onClick={() => {
+                              if (
+                                permissions.viewOnly ||
+                                !permissions.fieldPermissions.totalPrice
+                              )
+                                return;
+                              // Return to auto price: use CURRENT totalPrice and clear OverridePrice
+                              // This ensures we use the latest calculated price, not a stale one
+                              updateField(
+                                "totalPrice",
+                                editedOrder.totalPrice,
+                                {
+                                  source: "auto",
+                                  clearOverride: true,
+                                }
+                              );
+                            }}
+                            sx={{
+                              fontSize: "0.65rem",
+                              py: 0.25,
+                              px: 1,
+                              minWidth: "auto",
+                            }}
+                          >
+                            Вернуть автоматическую цену
+                          </Button>
+                        </Box>
+                      )}
+                    </>
+                  );
+                })()}
+              </Box>
 
-            <Divider
-              sx={{
-                my: { xs: 1.5, md: 1 },
-                borderColor: editedOrder?.my_order
-                  ? ORDER_COLORS.CONFIRMED_CLIENT.main
-                  : ORDER_COLORS.CONFIRMED_ADMIN.main,
-                borderWidth: 2,
-              }}
-            />
+              <Divider
+                sx={{
+                  my: { xs: 1.5, md: 1 },
+                  borderColor: editedOrder?.my_order
+                    ? ORDER_COLORS.CONFIRMED_CLIENT.main
+                    : ORDER_COLORS.CONFIRMED_ADMIN.main,
+                  borderWidth: 2,
+                }}
+              />
             </Box>
 
             <Box
@@ -946,54 +1075,549 @@ const EditOrderModal = ({
                 minHeight: 0,
                 overflowY: { xs: "visible", sm: "auto" },
                 pr: { xs: 0, sm: 0.5 },
+                "& .MuiTextField-root .MuiOutlinedInput-root, & .MuiFormControl-root .MuiOutlinedInput-root":
+                  {
+                    minHeight: formMetrics.fieldMinHeight,
+                  },
+                "& .MuiTextField-root .MuiInputBase-input, & .MuiFormControl-root .MuiInputBase-input, & .MuiFormControl-root .MuiSelect-select":
+                  {
+                    paddingTop: formMetrics.inputPaddingY,
+                    paddingBottom: formMetrics.inputPaddingY,
+                    paddingLeft: formMetrics.inputPaddingX,
+                    paddingRight: formMetrics.inputPaddingX,
+                    fontSize: formMetrics.inputFontSize,
+                    lineHeight: formMetrics.lineHeight,
+                  },
+                "& .MuiTextField-root .MuiInputLabel-root, & .MuiFormControl-root .MuiInputLabel-root":
+                  {
+                    fontSize: formMetrics.labelFontSize,
+                  },
+                "& .MuiFormControl-root": {
+                  marginTop: 0,
+                  marginBottom: 0,
+                },
               }}
             >
-            <Box sx={{ mb: { xs: 2, sm: 1.5, md: 1.25 } }}>
-              <Box sx={{ display: "flex", gap: 1 }}>
-                <ActionButton
-                  fullWidth
-                  onClick={handleConfirmationToggle}
-                  disabled={confirmToggleUpdating || isConfirmationDisabled}
-                  color={editedOrder?.confirmed ? "success" : "primary"}
-                  label={
-                    editedOrder?.confirmed
-                      ? t("order.orderConfirmed")
-                      : t("order.orderNotConfirmed")
-                  }
-                  title={
-                    permissions.isCurrentOrder &&
-                    editedOrder?.confirmed &&
-                    isClientOrder &&
-                    !isCurrentUserSuperAdmin
-                      ? "Нельзя снять подтверждение у текущего заказа"
-                      : maskConfirmationConflictPII(confirmationCheck.message) ||
-                        ""
-                  }
+              <Box sx={{ mb: { xs: 2, sm: 1.5, md: 1.25 } }}>
+                <Box
                   sx={{
-                    ...(isConfirmationDisabled ? disabledStyles : enabledStyles),
-                    flex: 1,
+                    display: "flex",
+                    gap: formMetrics.actionButtonsGap,
+                    flexDirection: "row",
                   }}
-                />
-                {isCurrentUserSuperAdmin && (
+                >
                   <ActionButton
                     fullWidth
-                    onClick={handleSendConfirmationEmail}
-                    loading={isSendingConfirmation}
-                    disabled={isSendingConfirmation || !canSendConfirmationEmail}
-                    color="secondary"
-                    label={t("order.sendConfirmationEmail")}
-                    title={sendConfirmationEmailDisabledReason}
-                    sx={{ flex: 1 }}
+                    onClick={handleConfirmationToggle}
+                    disabled={confirmToggleUpdating || isConfirmationDisabled}
+                    color={editedOrder?.confirmed ? "success" : "primary"}
+                    label={
+                      editedOrder?.confirmed
+                        ? t("order.orderConfirmed")
+                        : t("order.orderNotConfirmed")
+                    }
+                    title={
+                      permissions.isCurrentOrder &&
+                      editedOrder?.confirmed &&
+                      isClientOrder &&
+                      !isCurrentUserSuperAdmin
+                        ? "Нельзя снять подтверждение у текущего заказа"
+                        : maskConfirmationConflictPII(
+                            confirmationCheck.message
+                          ) || ""
+                    }
+                    sx={{
+                      ...(isConfirmationDisabled
+                        ? disabledStyles
+                        : enabledStyles),
+                      flex: 1,
+                      ...formMetrics.compactActionButtonSx,
+                    }}
                   />
-                )}
+                  {isCurrentUserSuperAdmin && (
+                    <ActionButton
+                      fullWidth
+                      onClick={handleSendConfirmationEmail}
+                      loading={isSendingConfirmation}
+                      disabled={
+                        isSendingConfirmation || !canSendConfirmationEmail
+                      }
+                      color="secondary"
+                      label={t("order.sendConfirmationEmail")}
+                      title={sendConfirmationEmailDisabledReason}
+                      sx={{
+                        flex: 1,
+                        ...formMetrics.compactActionButtonSx,
+                      }}
+                    />
+                  )}
+                </Box>
+                {/* 🔴 BLOCK: показываем сообщение о блокировке подтверждения (только если canConfirm === false) */}
+                {!editedOrder?.confirmed &&
+                  confirmationCheck.message &&
+                  !confirmationCheck.canConfirm && (
+                    <Box
+                      sx={{
+                        mt: 1,
+                        mb: 1,
+                        p: 1.5,
+                        borderRadius: 1,
+                        bgcolor: "error.lighter",
+                        border: "1px solid",
+                        borderColor: "error.main",
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{ color: "error.main", fontWeight: 500 }}
+                      >
+                        🔴 Невозможно подтвердить заказ
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        component="div"
+                        sx={{ color: "error.dark", fontSize: 12, mt: 0.5 }}
+                      >
+                        <BufferSettingsLinkifiedText
+                          text={maskConfirmationConflictPII(
+                            confirmationCheck.message
+                          )}
+                          onOpen={() => setBufferModalOpen(true)}
+                        />
+                      </Typography>
+                    </Box>
+                  )}
+                {isCurrentUserSuperAdmin &&
+                  (isMultiOrderView && !isHistoryPanelVisible ? (
+                    <Box
+                      sx={{
+                        mt: 0.5,
+                        display: "flex",
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      <Button
+                        size="small"
+                        onClick={() => setIsHistoryPanelVisible(true)}
+                        sx={{
+                          minWidth: "auto",
+                          px: 1,
+                          py: 0.25,
+                          fontSize: "0.7rem",
+                          textTransform: "none",
+                        }}
+                      >
+                        {t("order.confirmationEmailHistoryShow")}
+                      </Button>
+                    </Box>
+                  ) : (
+                    <Box
+                      sx={{
+                        mt: 1,
+                        p: 1,
+                        borderRadius: 1,
+                        border: "1px solid",
+                        borderColor: "divider",
+                        bgcolor: "background.default",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 1,
+                        }}
+                      >
+                        <Typography
+                          variant="caption"
+                          sx={{ color: "text.secondary", fontWeight: 600 }}
+                        >
+                          {t("order.confirmationEmailHistoryTitle")}
+                        </Typography>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                          }}
+                        >
+                          {confirmationEmailHistory.length > 0 && (
+                            <Button
+                              size="small"
+                              onClick={() =>
+                                setIsHistoryExpanded((prev) => !prev)
+                              }
+                              sx={{
+                                minWidth: "auto",
+                                px: 1,
+                                py: 0.25,
+                                fontSize: formMetrics.labelFontSize,
+                                textTransform: "none",
+                              }}
+                            >
+                              {isHistoryExpanded
+                                ? t("order.confirmationEmailHistoryHide")
+                                : t("order.confirmationEmailHistoryShow")}
+                            </Button>
+                          )}
+                          {isMultiOrderView && (
+                            <Button
+                              size="small"
+                              onClick={() => {
+                                setIsHistoryPanelVisible(false);
+                                setIsHistoryExpanded(false);
+                              }}
+                              sx={{
+                                minWidth: "auto",
+                                px: 1,
+                                py: 0.25,
+                                fontSize: formMetrics.labelFontSize,
+                                textTransform: "none",
+                              }}
+                            >
+                              {t("order.confirmationEmailHistoryHide")}
+                            </Button>
+                          )}
+                        </Box>
+                      </Box>
+                      {confirmationEmailHistory.length === 0 ? (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: "block",
+                            mt: 0.5,
+                            color: "text.secondary",
+                          }}
+                        >
+                          {t("order.confirmationEmailHistoryEmpty")}
+                        </Typography>
+                      ) : !isHistoryExpanded ? (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: "block",
+                            mt: 0.5,
+                            color: "text.secondary",
+                          }}
+                        >
+                          {t("order.confirmationEmailHistoryCollapsed", {
+                            count: confirmationEmailHistory.length,
+                          })}
+                        </Typography>
+                      ) : (
+                        <Box
+                          sx={{
+                            mt: 0.75,
+                            maxHeight: isCompactBatchLayout ? 140 : 180,
+                            overflowY: "auto",
+                            pr: 0.5,
+                          }}
+                        >
+                          {confirmationEmailHistory.map((entry, index) => {
+                            const snapshot = entry?.snapshot || {};
+                            const changes = entry?.changesSincePrevious || {};
+                            const hasChanges = changes?.hasChanges === true;
+                            const priceChanged =
+                              changes?.price?.changed === true;
+                            const datesChanged =
+                              changes?.dates?.changed === true;
+                            const timesChanged =
+                              changes?.times?.changed === true;
+
+                            return (
+                              <Box
+                                key={`${entry?.sentAt || "entry"}-${index}`}
+                                sx={{
+                                  mb: 0.75,
+                                  p: 0.75,
+                                  borderRadius: 0.75,
+                                  bgcolor: "background.paper",
+                                  border: "1px dashed",
+                                  borderColor: "divider",
+                                }}
+                              >
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    display: "block",
+                                    color: "text.primary",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  #{confirmationEmailHistory.length - index}{" "}
+                                  {formatHistoryDateTime(entry?.sentAt)} ·{" "}
+                                  {entry?.sentTo || "—"} ·{" "}
+                                  {String(entry?.locale || "en").toUpperCase()}
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    display: "block",
+                                    color: "text.secondary",
+                                  }}
+                                >
+                                  {`${t("order.price")}: €${
+                                    snapshot?.effectiveTotalPrice ?? "—"
+                                  } · ${t(
+                                    "order.pickupDate"
+                                  )}: ${formatHistoryDate(
+                                    snapshot?.rentalStartDate
+                                  )} ${formatHistoryTime(
+                                    snapshot?.timeIn
+                                  )} · ${t(
+                                    "order.returnDate"
+                                  )}: ${formatHistoryDate(
+                                    snapshot?.rentalEndDate
+                                  )} ${formatHistoryTime(snapshot?.timeOut)}`}
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    display: "block",
+                                    color: hasChanges
+                                      ? "warning.dark"
+                                      : "text.disabled",
+                                  }}
+                                >
+                                  {hasChanges
+                                    ? t(
+                                        "order.confirmationEmailHistoryHasChanges"
+                                      )
+                                    : t(
+                                        "order.confirmationEmailHistoryNoChanges"
+                                      )}
+                                  {priceChanged
+                                    ? ` ${t("order.price")}: €${
+                                        changes?.price?.old ?? "—"
+                                      } → €${changes?.price?.new ?? "—"};`
+                                    : ""}
+                                  {datesChanged
+                                    ? ` ${t("order.pickupDate")}/${t(
+                                        "order.returnDate"
+                                      )}: ${formatHistoryDate(
+                                        changes?.dates?.oldStartDate
+                                      )} - ${formatHistoryDate(
+                                        changes?.dates?.oldEndDate
+                                      )} → ${formatHistoryDate(
+                                        changes?.dates?.newStartDate
+                                      )} - ${formatHistoryDate(
+                                        changes?.dates?.newEndDate
+                                      )};`
+                                    : ""}
+                                  {timesChanged
+                                    ? ` ${t("order.pickupTime")}/${t(
+                                        "order.returnTime"
+                                      )}: ${formatHistoryTime(
+                                        changes?.times?.oldTimeIn
+                                      )} - ${formatHistoryTime(
+                                        changes?.times?.oldTimeOut
+                                      )} → ${formatHistoryTime(
+                                        changes?.times?.newTimeIn
+                                      )} - ${formatHistoryTime(
+                                        changes?.times?.newTimeOut
+                                      )};`
+                                    : ""}
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    display: "block",
+                                    color: "text.disabled",
+                                  }}
+                                >
+                                  {`${t("order.name")}: ${
+                                    entry?.sentBy?.name || "—"
+                                  } (${entry?.sentBy?.email || "—"})`}
+                                </Typography>
+                              </Box>
+                            );
+                          })}
+                        </Box>
+                      )}
+                    </Box>
+                  ))}
               </Box>
-              {/* 🔴 BLOCK: показываем сообщение о блокировке подтверждения (только если canConfirm === false) */}
-              {!editedOrder?.confirmed &&
-                confirmationCheck.message &&
-                !confirmationCheck.canConfirm && (
+
+              <Box sx={{ mb: 0 }}>
+                {/* Pickup/Return дата+время — в одну линию на desktop */}
+                <Box
+                  sx={{
+                    ...unifiedGridSx,
+                    mb: formMetrics.sectionMarginBottom,
+                  }}
+                >
+                  <TextField
+                    label={t("order.pickupDate")}
+                    type="date"
+                    value={
+                      editedOrder?.rentalStartDate
+                        ? formatDateYYYYMMDD(editedOrder.rentalStartDate)
+                        : ""
+                    }
+                    onChange={(e) => {
+                      if (
+                        permissions.viewOnly ||
+                        permissions.isCurrentOrder ||
+                        !permissions.fieldPermissions.rentalStartDate
+                      )
+                        return;
+                      updateStartDate(e.target.value);
+                    }}
+                    sx={unifiedFieldSx}
+                    size={formMetrics.fieldSize}
+                    disabled={
+                      permissions.viewOnly ||
+                      permissions.isCurrentOrder ||
+                      !permissions.fieldPermissions.rentalStartDate
+                    }
+                    inputProps={{ min: todayStr }}
+                  />
+                  <TextField
+                    label={t("order.pickupTime")}
+                    type="time"
+                    value={formatTimeHHMM(startTime)}
+                    onChange={(e) => {
+                      if (
+                        permissions.viewOnly ||
+                        !permissions.fieldPermissions.timeIn
+                      ) {
+                        return;
+                      }
+                      const nextTime = createAthensDateTime(
+                        editedOrder?.rentalStartDate
+                          ? formatDateYYYYMMDD(editedOrder.rentalStartDate)
+                          : dayjs().format("YYYY-MM-DD"),
+                        e.target.value
+                      );
+                      updateStartTime(nextTime);
+                    }}
+                    disabled={
+                      permissions.viewOnly ||
+                      !permissions.fieldPermissions.timeIn
+                    }
+                    sx={{
+                      ...unifiedFieldSx,
+                      ...(Boolean(finalPickupSummary) && {
+                        "& .MuiOutlinedInput-root fieldset": {
+                          borderColor: "error.main",
+                          borderWidth: "2px",
+                        },
+                        "& .MuiOutlinedInput-root:hover fieldset": {
+                          borderColor: "error.main",
+                        },
+                        "& .MuiOutlinedInput-root.Mui-focused fieldset": {
+                          borderColor: "error.main",
+                          borderWidth: "2px",
+                        },
+                      }),
+                    }}
+                    size={formMetrics.fieldSize}
+                  />
+                  <TextField
+                    label={t("order.returnDate")}
+                    type="date"
+                    value={
+                      editedOrder?.rentalEndDate
+                        ? formatDateYYYYMMDD(editedOrder.rentalEndDate)
+                        : ""
+                    }
+                    onChange={(e) => {
+                      if (
+                        permissions.viewOnly ||
+                        !permissions.fieldPermissions.rentalEndDate
+                      )
+                        return;
+                      updateEndDate(e.target.value);
+                    }}
+                    disabled={
+                      permissions.viewOnly ||
+                      !permissions.fieldPermissions.rentalEndDate
+                    }
+                    sx={unifiedFieldSx}
+                    size={formMetrics.fieldSize}
+                    inputProps={{
+                      min: permissions.isCurrentOrder
+                        ? athensNow().format("YYYY-MM-DD")
+                        : editedOrder?.rentalStartDate
+                        ? formatDateYYYYMMDD(editedOrder.rentalStartDate)
+                        : undefined,
+                    }}
+                  />
+                  <TextField
+                    label={t("order.returnTime")}
+                    type="time"
+                    value={formatTimeHHMM(endTime)}
+                    onChange={(e) => {
+                      if (
+                        permissions.viewOnly ||
+                        !permissions.fieldPermissions.timeOut
+                      ) {
+                        return;
+                      }
+                      const nextTime = createAthensDateTime(
+                        editedOrder?.rentalEndDate
+                          ? formatDateYYYYMMDD(editedOrder.rentalEndDate)
+                          : dayjs().format("YYYY-MM-DD"),
+                        e.target.value
+                      );
+                      updateEndTime(nextTime);
+                    }}
+                    disabled={
+                      permissions.viewOnly ||
+                      !permissions.fieldPermissions.timeOut
+                    }
+                    sx={{
+                      ...unifiedFieldSx,
+                      ...(Boolean(finalReturnSummary) && {
+                        "& .MuiOutlinedInput-root fieldset": {
+                          borderColor: "error.main",
+                          borderWidth: "2px",
+                        },
+                        "& .MuiOutlinedInput-root:hover fieldset": {
+                          borderColor: "error.main",
+                        },
+                        "& .MuiOutlinedInput-root.Mui-focused fieldset": {
+                          borderColor: "error.main",
+                          borderWidth: "2px",
+                        },
+                      }),
+                    }}
+                    size={formMetrics.fieldSize}
+                  />
+                </Box>
+                {/* Warning по времени показываем сразу, block остаётся только на save */}
+                {finalPickupSummary?.level === "warning" && (
+                  <Alert severity="warning" sx={{ mb: 1, py: 0 }}>
+                    <Typography variant="body2" sx={{ fontSize: 12 }}>
+                      <BufferSettingsLinkifiedText
+                        text={maskConfirmationConflictPII(
+                          finalPickupSummary.message
+                        )}
+                        onOpen={() => setBufferModalOpen(true)}
+                      />
+                    </Typography>
+                  </Alert>
+                )}
+                {finalReturnSummary?.level === "warning" &&
+                  finalReturnSummary?.message !==
+                    finalPickupSummary?.message && (
+                    <Alert severity="warning" sx={{ mb: 1, py: 0 }}>
+                      <Typography variant="body2" sx={{ fontSize: 12 }}>
+                        <BufferSettingsLinkifiedText
+                          text={maskConfirmationConflictPII(
+                            finalReturnSummary.message
+                          )}
+                          onOpen={() => setBufferModalOpen(true)}
+                        />
+                      </Typography>
+                    </Alert>
+                  )}
+
+                {/* 🔴 Block-сообщение — ТОЛЬКО после попытки сохранения */}
+                {attemptedSave && hasBlockingConflict && (
                   <Box
                     sx={{
-                      mt: 1,
                       mb: 1,
                       p: 1.5,
                       borderRadius: 1,
@@ -1006,7 +1630,7 @@ const EditOrderModal = ({
                       variant="body2"
                       sx={{ color: "error.main", fontWeight: 500 }}
                     >
-                      🔴 Невозможно подтвердить заказ
+                      🔴 Невозможно сохранить изменения
                     </Typography>
                     <Typography
                       variant="body2"
@@ -1015,389 +1639,84 @@ const EditOrderModal = ({
                     >
                       <BufferSettingsLinkifiedText
                         text={maskConfirmationConflictPII(
-                          confirmationCheck.message
+                          pickupSummary?.level === "block"
+                            ? pickupSummary.message
+                            : returnSummary?.message
                         )}
                         onOpen={() => setBufferModalOpen(true)}
                       />
                     </Typography>
                   </Box>
                 )}
-              {isCurrentUserSuperAdmin && (
+
+                {/* Место получения/возврата — выровнено по общей сетке */}
                 <Box
                   sx={{
-                    mt: 1,
-                    p: 1,
-                    borderRadius: 1,
-                    border: "1px solid",
-                    borderColor: "divider",
-                    bgcolor: "background.default",
+                    ...unifiedGridSx,
+                    mb: formMetrics.sectionMarginBottom,
                   }}
                 >
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 1,
+                  <Autocomplete
+                    freeSolo
+                    options={locations}
+                    value={editedOrder.placeIn || ""}
+                    onChange={(_, newValue) => {
+                      if (!permissions.fieldPermissions.placeIn) return;
+                      updateField("placeIn", newValue || "");
                     }}
-                  >
-                    <Typography
-                      variant="caption"
-                      sx={{ color: "text.secondary", fontWeight: 600 }}
-                    >
-                      {t("order.confirmationEmailHistoryTitle")}
-                    </Typography>
-                    {confirmationEmailHistory.length > 0 && (
-                      <Button
-                        size="small"
-                        onClick={() => setIsHistoryExpanded((prev) => !prev)}
-                        sx={{
-                          minWidth: "auto",
-                          px: 1,
-                          py: 0.25,
-                          fontSize: "0.72rem",
-                          textTransform: "none",
-                        }}
-                      >
-                        {isHistoryExpanded
-                          ? t("order.confirmationEmailHistoryHide")
-                          : t("order.confirmationEmailHistoryShow")}
-                      </Button>
+                    onInputChange={(_, newInputValue) => {
+                      if (!permissions.fieldPermissions.placeIn) return;
+                      updateField("placeIn", newInputValue);
+                    }}
+                    disabled={
+                      permissions.viewOnly ||
+                      !permissions.fieldPermissions.placeIn
+                    }
+                    PaperProps={{
+                      sx: {
+                        border: "2px solid",
+                        borderColor: "text.primary",
+                        borderRadius: 1,
+                        boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
+                        backgroundColor: "background.paper",
+                      },
+                    }}
+                    slotProps={{
+                      popper: {
+                        style: { zIndex: 1400 },
+                      },
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label={t("order.pickupLocation")}
+                        size={formMetrics.fieldSize}
+                        required
+                        sx={unifiedFieldSx}
+                      />
                     )}
-                  </Box>
-                  {confirmationEmailHistory.length === 0 ? (
-                    <Typography
-                      variant="caption"
-                      sx={{ display: "block", mt: 0.5, color: "text.secondary" }}
-                    >
-                      {t("order.confirmationEmailHistoryEmpty")}
-                    </Typography>
-                  ) : !isHistoryExpanded ? (
-                    <Typography
-                      variant="caption"
-                      sx={{ display: "block", mt: 0.5, color: "text.secondary" }}
-                    >
-                      {t("order.confirmationEmailHistoryCollapsed", {
-                        count: confirmationEmailHistory.length,
-                      })}
-                    </Typography>
-                  ) : (
-                    <Box sx={{ mt: 0.75, maxHeight: 180, overflowY: "auto", pr: 0.5 }}>
-                      {confirmationEmailHistory.map((entry, index) => {
-                        const snapshot = entry?.snapshot || {};
-                        const changes = entry?.changesSincePrevious || {};
-                        const hasChanges = changes?.hasChanges === true;
-                        const priceChanged = changes?.price?.changed === true;
-                        const datesChanged = changes?.dates?.changed === true;
-                        const timesChanged = changes?.times?.changed === true;
-
-                        return (
-                          <Box
-                            key={`${entry?.sentAt || "entry"}-${index}`}
-                            sx={{
-                              mb: 0.75,
-                              p: 0.75,
-                              borderRadius: 0.75,
-                              bgcolor: "background.paper",
-                              border: "1px dashed",
-                              borderColor: "divider",
-                            }}
-                          >
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                display: "block",
-                                color: "text.primary",
-                                fontWeight: 600,
-                              }}
-                            >
-                              #{confirmationEmailHistory.length - index}{" "}
-                              {formatHistoryDateTime(entry?.sentAt)} ·{" "}
-                              {entry?.sentTo || "—"} ·{" "}
-                              {String(entry?.locale || "en").toUpperCase()}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              sx={{ display: "block", color: "text.secondary" }}
-                            >
-                              {`${t("order.price")}: €${
-                                snapshot?.effectiveTotalPrice ?? "—"
-                              } · ${t("order.pickupDate")}: ${formatHistoryDate(
-                                snapshot?.rentalStartDate
-                              )} ${formatHistoryTime(
-                                snapshot?.timeIn
-                              )} · ${t("order.returnDate")}: ${formatHistoryDate(
-                                snapshot?.rentalEndDate
-                              )} ${formatHistoryTime(snapshot?.timeOut)}`}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                display: "block",
-                                color: hasChanges ? "warning.dark" : "text.disabled",
-                              }}
-                            >
-                              {hasChanges
-                                ? t("order.confirmationEmailHistoryHasChanges")
-                                : t("order.confirmationEmailHistoryNoChanges")}
-                              {priceChanged
-                                ? ` ${t("order.price")}: €${
-                                    changes?.price?.old ?? "—"
-                                  } → €${changes?.price?.new ?? "—"};`
-                                : ""}
-                              {datesChanged
-                                ? ` ${t("order.pickupDate")}/${t(
-                                    "order.returnDate"
-                                  )}: ${formatHistoryDate(
-                                    changes?.dates?.oldStartDate
-                                  )} - ${formatHistoryDate(
-                                    changes?.dates?.oldEndDate
-                                  )} → ${formatHistoryDate(
-                                    changes?.dates?.newStartDate
-                                  )} - ${formatHistoryDate(
-                                    changes?.dates?.newEndDate
-                                  )};`
-                                : ""}
-                              {timesChanged
-                                ? ` ${t("order.pickupTime")}/${t(
-                                    "order.returnTime"
-                                  )}: ${formatHistoryTime(
-                                    changes?.times?.oldTimeIn
-                                  )} - ${formatHistoryTime(
-                                    changes?.times?.oldTimeOut
-                                  )} → ${formatHistoryTime(
-                                    changes?.times?.newTimeIn
-                                  )} - ${formatHistoryTime(
-                                    changes?.times?.newTimeOut
-                                  )};`
-                                : ""}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              sx={{ display: "block", color: "text.disabled" }}
-                            >
-                              {`${t("order.name")}: ${
-                                entry?.sentBy?.name || "—"
-                              } (${entry?.sentBy?.email || "—"})`}
-                            </Typography>
-                          </Box>
-                        );
-                      })}
-                    </Box>
-                  )}
-                </Box>
-              )}
-            </Box>
-
-            <Box sx={{ mb: 0 }}>
-              {/* Даты — вертикально на мобильных */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: { xs: "column", sm: "row" },
-                  gap: { xs: 1, sm: 1.5, md: 1 },
-                  mb: { xs: 1, sm: 0.75, md: 0.5 },
-                  alignItems: { xs: "stretch", sm: "flex-start" },
-                }}
-              >
-                <TextField
-                  label={t("order.pickupDate")}
-                  type="date"
-                  value={
-                    editedOrder?.rentalStartDate
-                      ? formatDateYYYYMMDD(editedOrder.rentalStartDate)
-                      : ""
-                  }
-                  onChange={(e) => {
-                    if (
-                      permissions.viewOnly ||
-                      permissions.isCurrentOrder ||
-                      !permissions.fieldPermissions.rentalStartDate
-                    )
-                      return;
-                    updateStartDate(e.target.value);
-                  }}
-                  sx={{
-                    flex: 1,
-                    minHeight: { xs: 48, md: 44 },
-                    "& .MuiInputBase-root": {
-                      minHeight: { xs: 48, md: 44 },
-                    },
-                  }}
-                  size="medium"
-                  disabled={
-                    permissions.viewOnly ||
-                    permissions.isCurrentOrder ||
-                    !permissions.fieldPermissions.rentalStartDate
-                  }
-                  inputProps={{ min: todayStr }}
-                />
-                <TextField
-                  label={t("order.returnDate")}
-                  type="date"
-                  value={
-                    editedOrder?.rentalEndDate
-                      ? formatDateYYYYMMDD(editedOrder.rentalEndDate)
-                      : ""
-                  }
-                  onChange={(e) => {
-                    if (
-                      permissions.viewOnly ||
-                      !permissions.fieldPermissions.rentalEndDate
-                    )
-                      return;
-                    updateEndDate(e.target.value);
-                  }}
-                  disabled={
-                    permissions.viewOnly ||
-                    !permissions.fieldPermissions.rentalEndDate
-                  }
-                  sx={{
-                    flex: 1,
-                    minHeight: { xs: 48, md: 44 },
-                    "& .MuiInputBase-root": {
-                      minHeight: { xs: 48, md: 44 },
-                    },
-                  }}
-                  size="medium"
-                  inputProps={{
-                    min: permissions.isCurrentOrder
-                      ? athensNow().format("YYYY-MM-DD")
-                      : editedOrder?.rentalStartDate
-                      ? formatDateYYYYMMDD(editedOrder.rentalStartDate)
-                      : undefined,
-                  }}
-                />
-              </Box>
-              {/* Время — TimePicker читает conflicts, не думает */}
-              {/* Время — упрощённый TimePicker (НИКОГДА не блокирует ввод) */}
-              <TimePicker
-                startTime={startTime}
-                endTime={endTime}
-                setStartTime={updateStartTime}
-                setEndTime={updateEndTime}
-                disabled={
-                  permissions.viewOnly ||
-                  (!permissions.fieldPermissions.timeIn &&
-                    !permissions.fieldPermissions.timeOut)
-                }
-                pickupDisabled={
-                  permissions.viewOnly || !permissions.fieldPermissions.timeIn
-                }
-                returnDisabled={
-                  permissions.viewOnly || !permissions.fieldPermissions.timeOut
-                }
-                pickupSummary={finalPickupSummary}
-                returnSummary={finalReturnSummary}
-                onOpenBufferSettings={() => setBufferModalOpen(true)}
-              />
-
-              {/* 🔴 Block-сообщение — ТОЛЬКО после попытки сохранения */}
-              {attemptedSave && hasBlockingConflict && (
-                <Box
-                  sx={{
-                    mb: 1,
-                    p: 1.5,
-                    borderRadius: 1,
-                    bgcolor: "error.lighter",
-                    border: "1px solid",
-                    borderColor: "error.main",
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    sx={{ color: "error.main", fontWeight: 500 }}
-                  >
-                    🔴 Невозможно сохранить изменения
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    component="div"
-                    sx={{ color: "error.dark", fontSize: 12, mt: 0.5 }}
-                  >
-                    <BufferSettingsLinkifiedText
-                      text={maskConfirmationConflictPII(
-                        pickupSummary?.level === "block"
-                          ? pickupSummary.message
-                          : returnSummary?.message
-                      )}
-                      onOpen={() => setBufferModalOpen(true)}
-                    />
-                  </Typography>
-                </Box>
-              )}
-
-              {/* Место получения и возврата — вертикально на мобильных */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: { xs: "column", sm: "row" },
-                  gap: { xs: 1, sm: 1.5, md: 1 },
-                  mb: { xs: 1, sm: 0.75, md: 0.5 },
-                }}
-              >
-                <Autocomplete
-                  freeSolo
-                  options={locations}
-                  value={editedOrder.placeIn || ""}
-                  onChange={(_, newValue) => {
-                    if (!permissions.fieldPermissions.placeIn) return;
-                    updateField("placeIn", newValue || "");
-                  }}
-                  onInputChange={(_, newInputValue) => {
-                    if (!permissions.fieldPermissions.placeIn) return;
-                    updateField("placeIn", newInputValue);
-                  }}
-                  disabled={
-                    permissions.viewOnly ||
-                    !permissions.fieldPermissions.placeIn
-                  }
-                  PaperProps={{
-                    sx: {
-                      border: "2px solid",
-                      borderColor: "text.primary",
-                      borderRadius: 1,
-                      boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
-                      backgroundColor: "background.paper",
-                    },
-                  }}
-                  slotProps={{
-                    popper: {
-                      style: { zIndex: 1400 },
-                    },
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label={t("order.pickupLocation")}
-                      size="medium"
-                      required
-                      sx={{
-                        "& .MuiInputBase-root": {
-                          minHeight: { xs: 48, md: 44 },
-                        },
-                      }}
-                    />
-                  )}
-                  sx={{
-                    flex: 1,
-                    minHeight: { xs: 48, md: 44 },
-                  }}
-                />
-                {editedOrder.placeIn &&
-                  editedOrder.placeIn.toLowerCase() === "airport" && (
+                    sx={{
+                      gridColumn: {
+                        xs: "1 / -1",
+                        sm: "1 / span 1",
+                        md: "1 / span 2",
+                      },
+                    }}
+                  />
+                  {isPickupAirport && (
                     <TextField
                       label={t("order.flightNumber") || "Номер рейса"}
                       value={editedOrder.flightNumber || ""}
                       onChange={(e) =>
                         updateField("flightNumber", e.target.value)
                       }
-                      size="medium"
+                      size={formMetrics.fieldSize}
                       sx={{
-                        width: "25%",
-                        alignSelf: "stretch",
-                        "& .MuiInputBase-root": {
-                          minHeight: { xs: 48, md: 44 },
+                        ...unifiedFieldSx,
+                        gridColumn: {
+                          xs: "1 / -1",
+                          sm: "2 / span 1",
+                          md: "3 / span 1",
                         },
                       }}
                       InputLabelProps={{ shrink: true }}
@@ -1407,246 +1726,276 @@ const EditOrderModal = ({
                       }
                     />
                   )}
-                <Autocomplete
-                  freeSolo
-                  options={locations}
-                  value={editedOrder.placeOut || ""}
-                  onChange={(_, newValue) =>
-                    updateField("placeOut", newValue || "")
-                  }
-                  onInputChange={(_, newInputValue) =>
-                    updateField("placeOut", newInputValue)
-                  }
-                  disabled={
-                    permissions.viewOnly ||
-                    !permissions.fieldPermissions.placeOut
-                  }
-                  PaperProps={{
-                    sx: {
-                      border: "2px solid",
-                      borderColor: "text.primary",
-                      borderRadius: 1,
-                      boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
-                      backgroundColor: "background.paper",
-                    },
-                  }}
-                  slotProps={{
-                    popper: {
-                      style: { zIndex: 1400 },
-                    },
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label={t("order.returnLocation")}
-                      size="medium"
-                      required
-                      sx={{
-                        "& .MuiInputBase-root": {
-                          minHeight: { xs: 48, md: 44 },
-                        },
-                      }}
-                    />
-                  )}
-                  sx={{
-                    flex: 1,
-                    minHeight: { xs: 48, md: 44 },
-                  }}
-                />
-              </Box>
-              {/* Страховка и детские кресла — адаптивно */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: { xs: "column", sm: "row" },
-                  gap: { xs: 1, sm: 1.5, md: 1 },
-                  mb: 0,
-                }}
-              >
-                <FormControl
-                  fullWidth
-                  sx={{
-                    width: {
-                      xs: "100%",
-                      sm: editedOrder.insurance === "TPL" ? "49%" : "30%",
-                    },
-                  }}
-                >
-                  <InputLabel>{t("order.insurance")}</InputLabel>
-                  <Select
-                    label={t("order.insurance")}
-                    value={editedOrder.insurance || ""}
-                    onChange={(e) =>
-                      !permissions.viewOnly &&
-                      permissions.fieldPermissions.insurance &&
-                      updateField("insurance", e.target.value)
+                  <Autocomplete
+                    freeSolo
+                    options={locations}
+                    value={editedOrder.placeOut || ""}
+                    onChange={(_, newValue) =>
+                      updateField("placeOut", newValue || "")
+                    }
+                    onInputChange={(_, newInputValue) =>
+                      updateField("placeOut", newInputValue)
                     }
                     disabled={
                       permissions.viewOnly ||
-                      !permissions.fieldPermissions.insurance
+                      !permissions.fieldPermissions.placeOut
                     }
+                    PaperProps={{
+                      sx: {
+                        border: "2px solid",
+                        borderColor: "text.primary",
+                        borderRadius: 1,
+                        boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
+                        backgroundColor: "background.paper",
+                      },
+                    }}
+                    slotProps={{
+                      popper: {
+                        style: { zIndex: 1400 },
+                      },
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label={t("order.returnLocation")}
+                        size={formMetrics.fieldSize}
+                        required
+                        sx={unifiedFieldSx}
+                      />
+                    )}
+                    sx={{
+                      gridColumn: {
+                        xs: "1 / -1",
+                        sm: isPickupAirport ? "1 / -1" : "2 / span 1",
+                        md: isPickupAirport ? "4 / span 1" : "3 / span 2",
+                      },
+                    }}
+                  />
+                </Box>
+
+                {/* Страховка/франшиза/детские кресла — по той же сетке */}
+                <Box
+                  sx={{
+                    ...unifiedGridSx,
+                    mb: 0,
+                  }}
+                >
+                  <FormControl
+                    fullWidth
+                    sx={{
+                      ...unifiedFieldSx,
+                      gridColumn: {
+                        xs: "1 / -1",
+                        sm: "1 / span 1",
+                        md:
+                          editedOrder.insurance === "CDW"
+                            ? "1 / span 1"
+                            : "1 / span 2",
+                      },
+                    }}
                   >
-                    {(() => {
-                      // 🔧 FIX: Use selectedCar from hook (single source of truth)
-                      const kaskoPrice = selectedCar?.PriceKacko ?? 0;
-                      return (
-                        t("order.insuranceOptions", { returnObjects: true }) ||
-                        []
-                      ).map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.value === "CDW"
-                            ? `${option.label} ${kaskoPrice}€/${t(
-                                "order.perDay"
-                              )}`
-                            : option.label}
-                        </MenuItem>
-                      ));
-                    })()}
-                  </Select>
-                </FormControl>
-                {editedOrder.insurance === "CDW" && (
-                  <Box sx={{ width: "16%" }}>
-                    <RenderTextField
+                    <InputLabel>{t("order.insurance")}</InputLabel>
+                    <Select
+                      size={formMetrics.fieldSize}
+                      label={t("order.insurance")}
+                      value={editedOrder.insurance || ""}
+                      onChange={(e) =>
+                        !permissions.viewOnly &&
+                        permissions.fieldPermissions.insurance &&
+                        updateField("insurance", e.target.value)
+                      }
+                      disabled={
+                        permissions.viewOnly ||
+                        !permissions.fieldPermissions.insurance
+                      }
+                    >
+                      {(() => {
+                        // 🔧 FIX: Use selectedCar from hook (single source of truth)
+                        const kaskoPrice = selectedCar?.PriceKacko ?? 0;
+                        return (
+                          t("order.insuranceOptions", {
+                            returnObjects: true,
+                          }) || []
+                        ).map((option) => (
+                          <MenuItem key={option.value} value={option.value}>
+                            {option.value === "CDW"
+                              ? `${option.label} ${kaskoPrice}€/${t(
+                                  "order.perDay"
+                                )}`
+                              : option.label}
+                          </MenuItem>
+                        ));
+                      })()}
+                    </Select>
+                  </FormControl>
+                  {editedOrder.insurance === "CDW" && (
+                    <TextField
                       name="franchiseOrder"
                       label={t("car.franchise") || "Франшиза заказа"}
                       type="number"
-                      updatedCar={editedOrder}
-                      handleChange={(e) =>
+                      value={editedOrder.franchiseOrder ?? ""}
+                      onChange={(e) =>
                         !permissions.viewOnly &&
                         permissions.fieldPermissions.franchiseOrder &&
                         updateField("franchiseOrder", Number(e.target.value))
                       }
-                      isLoading={loading}
+                      size={formMetrics.fieldSize}
+                      sx={{
+                        ...unifiedFieldSx,
+                        gridColumn: {
+                          xs: "1 / -1",
+                          sm: "2 / span 1",
+                          md: "2 / span 1",
+                        },
+                      }}
                       disabled={
+                        loading ||
                         permissions.viewOnly ||
                         !permissions.fieldPermissions.franchiseOrder
                       }
                     />
-                  </Box>
-                )}
-                <FormControl
-                  fullWidth
-                  sx={{ width: { xs: "100%", sm: "49%" } }}
-                >
-                  <InputLabel>
-                    {t("order.childSeats")} {selectedCar?.PriceChildSeats ?? 0}
-                    €/{t("order.perDay")}
-                  </InputLabel>
-                  <Select
-                    label={`${t("order.childSeats")} ${
-                      selectedCar?.PriceChildSeats ?? 0
-                    }€/${t("order.perDay")}`}
-                    value={
-                      typeof editedOrder.ChildSeats === "number"
-                        ? editedOrder.ChildSeats
-                        : 0
-                    }
-                    onChange={(e) =>
-                      !permissions.viewOnly &&
-                      permissions.fieldPermissions.ChildSeats &&
-                      updateField("ChildSeats", Number(e.target.value))
-                    }
-                    disabled={
-                      permissions.viewOnly ||
-                      !permissions.fieldPermissions.ChildSeats
-                    }
-                  >
-                    <MenuItem value={0}>{t("order.childSeatsNone")}</MenuItem>
-                    {[1, 2, 3, 4].map((num) => (
-                      <MenuItem key={num} value={num}>
-                        {num}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Box>
-            </Box>
-
-            {/* Блок данных клиента: visibility = canSeeClientPII, editability = canEditClientPII (orderAccessPolicy only) */}
-            {access?.canSeeClientPII && (
-              <Box sx={{ mb: 0 }}>
-                <FormControl fullWidth margin="dense" sx={{ mt: 0, mb: 0 }}>
-                  <TextField
-                    fullWidth
-                    margin="dense"
-                    label={
-                      <>
-                        <span>{t("order.clientName")}</span>
-                        <Box component="span" sx={{ color: "primary.dark" }}>
-                          *
-                        </Box>
-                      </>
-                    }
-                    value={editedOrder.customerName || ""}
-                    onChange={(e) => {
-                      if (permissions.viewOnly || !access?.canEditClientPII)
-                        return;
-                      updateField("customerName", e.target.value);
-                    }}
-                    disabled={permissions.viewOnly || !access?.canEditClientPII}
-                    helperText={
-                      !access?.canEditClientPII
-                        ? access?.reasons?.clientPII
-                        : undefined
-                    }
-                  />
-                </FormControl>
-                {/* Телефон и email — вертикально на мобильных */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: { xs: "column", sm: "row" },
-                    gap: { xs: 0.5, sm: 1.5, md: 1 },
-                    mb: 0,
-                  }}
-                >
-                  <Box sx={{ flex: 1 }}>
-                    <FormControl
-                      fullWidth
-                      margin="dense"
-                      sx={{ minHeight: 36 }}
-                    >
-                      <TextField
-                        fullWidth
-                        margin="dense"
-                        size="small"
-                        label={
-                          <>
-                            <span>{t("order.phone")}</span>
-                            <Box
-                              component="span"
-                              sx={{ color: "primary.dark" }}
-                            >
-                              *
-                            </Box>
-                          </>
-                        }
-                        value={editedOrder.phone || ""}
-                        onChange={(e) => {
-                          if (permissions.viewOnly || !access?.canEditClientPII)
-                            return;
-                          updateField("phone", e.target.value);
-                        }}
-                        disabled={
-                          permissions.viewOnly || !access?.canEditClientPII
-                        }
-                        helperText={
-                          !access?.canEditClientPII
-                            ? access?.reasons?.clientPII
-                            : undefined
-                        }
-                      />
-                    </FormControl>
-                  </Box>
+                  )}
                   <FormControl
                     fullWidth
-                    margin="dense"
-                    sx={{ flex: 1, minHeight: 36 }}
+                    sx={{
+                      ...unifiedFieldSx,
+                      gridColumn: {
+                        xs: "1 / -1",
+                        sm:
+                          editedOrder.insurance === "CDW"
+                            ? "1 / -1"
+                            : "2 / span 1",
+                        md:
+                          editedOrder.insurance === "CDW"
+                            ? "3 / span 2"
+                            : "3 / span 2",
+                      },
+                    }}
+                  >
+                    <InputLabel>
+                      {t("order.childSeats")}{" "}
+                      {selectedCar?.PriceChildSeats ?? 0}
+                      €/{t("order.perDay")}
+                    </InputLabel>
+                    <Select
+                      size={formMetrics.fieldSize}
+                      label={`${t("order.childSeats")} ${
+                        selectedCar?.PriceChildSeats ?? 0
+                      }€/${t("order.perDay")}`}
+                      value={
+                        typeof editedOrder.ChildSeats === "number"
+                          ? editedOrder.ChildSeats
+                          : 0
+                      }
+                      onChange={(e) =>
+                        !permissions.viewOnly &&
+                        permissions.fieldPermissions.ChildSeats &&
+                        updateField("ChildSeats", Number(e.target.value))
+                      }
+                      disabled={
+                        permissions.viewOnly ||
+                        !permissions.fieldPermissions.ChildSeats
+                      }
+                    >
+                      <MenuItem value={0}>{t("order.childSeatsNone")}</MenuItem>
+                      {[1, 2, 3, 4].map((num) => (
+                        <MenuItem key={num} value={num}>
+                          {num}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Box>
+              </Box>
+
+              {/* Блок данных клиента: visibility = canSeeClientPII, editability = canEditClientPII (orderAccessPolicy only) */}
+              {access?.canSeeClientPII && (
+                <Box sx={{ my: 1 }}>
+                  <Box
+                    sx={{
+                      ...unifiedGridSx,
+                      mb: 0,
+                    }}
                   >
                     <TextField
                       fullWidth
-                      margin="dense"
-                      size="small"
+                      label={
+                        <>
+                          <span>{t("order.clientName")}</span>
+                          <Box component="span" sx={{ color: "primary.dark" }}>
+                            *
+                          </Box>
+                        </>
+                      }
+                      value={editedOrder.customerName || ""}
+                      onChange={(e) => {
+                        if (permissions.viewOnly || !access?.canEditClientPII)
+                          return;
+                        updateField("customerName", e.target.value);
+                      }}
+                      size={formMetrics.fieldSize}
+                      sx={{
+                        ...unifiedFieldSx,
+                        gridColumn: {
+                          xs: "1 / -1",
+                          sm: "1 / -1",
+                          md: "1 / -1",
+                        },
+                      }}
+                      disabled={
+                        permissions.viewOnly || !access?.canEditClientPII
+                      }
+                      helperText={
+                        !access?.canEditClientPII
+                          ? access?.reasons?.clientPII
+                          : undefined
+                      }
+                    />
+                    <TextField
+                      fullWidth
+                      size={formMetrics.fieldSize}
+                      label={
+                        <>
+                          <span>{t("order.phone")}</span>
+                          <Box component="span" sx={{ color: "primary.dark" }}>
+                            *
+                          </Box>
+                        </>
+                      }
+                      value={editedOrder.phone || ""}
+                      onChange={(e) => {
+                        if (permissions.viewOnly || !access?.canEditClientPII)
+                          return;
+                        updateField("phone", e.target.value);
+                      }}
+                      sx={{
+                        ...unifiedFieldSx,
+                        gridColumn: {
+                          xs: "1 / -1",
+                          sm: "1 / span 1",
+                          md: "1 / span 2",
+                        },
+                      }}
+                      disabled={
+                        permissions.viewOnly || !access?.canEditClientPII
+                      }
+                      helperText={
+                        !access?.canEditClientPII
+                          ? access?.reasons?.clientPII
+                          : undefined
+                      }
+                    />
+                    <TextField
+                      fullWidth
+                      size={formMetrics.fieldSize}
+                      sx={{
+                        ...unifiedFieldSx,
+                        gridColumn: {
+                          xs: "1 / -1",
+                          sm: "2 / span 1",
+                          md: "3 / span 2",
+                        },
+                      }}
                       label={
                         <>
                           {t("order.email")}
@@ -1677,187 +2026,202 @@ const EditOrderModal = ({
                           : undefined
                       }
                     />
-                  </FormControl>
-                </Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    gap: 2,
-                    mt: { xs: 0.25, md: 0 },
-                    mb: 0.5,
-                    flexWrap: "nowrap",
-                    overflowX: "auto",
-                  }}
-                >
-                  <Box
-                    sx={{
-                      flex: 1,
-                      minWidth: "fit-content",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0,
-                      flexWrap: "nowrap",
-                      "& .MuiFormControlLabel-root": {
-                        flexShrink: 0,
-                        whiteSpace: "nowrap",
-                        m: 0,
-                        mr: 0.125,
-                        columnGap: 0,
-                      },
-                      "& .MuiCheckbox-root": {
-                        p: "1px",
-                      },
-                    }}
-                  >
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={Boolean(editedOrder.Viber)}
-                          onChange={(e) => {
-                            if (
-                              permissions.viewOnly ||
-                              !access?.canEditClientPII
-                            )
-                              return;
-                            updateField("Viber", e.target.checked);
-                          }}
-                          disabled={
-                            permissions.viewOnly || !access?.canEditClientPII
-                          }
-                        />
-                      }
-                      sx={{
-                        "& .MuiFormControlLabel-label": { fontSize: "0.85rem" },
-                      }}
-                      label="Viber"
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={Boolean(editedOrder.Whatsapp)}
-                          onChange={(e) => {
-                            if (
-                              permissions.viewOnly ||
-                              !access?.canEditClientPII
-                            )
-                              return;
-                            updateField("Whatsapp", e.target.checked);
-                          }}
-                          disabled={
-                            permissions.viewOnly || !access?.canEditClientPII
-                          }
-                        />
-                      }
-                      sx={{
-                        "& .MuiFormControlLabel-label": { fontSize: "0.85rem" },
-                      }}
-                      label="WhatsApp"
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={Boolean(editedOrder.Telegram)}
-                          onChange={(e) => {
-                            if (
-                              permissions.viewOnly ||
-                              !access?.canEditClientPII
-                            )
-                              return;
-                            updateField("Telegram", e.target.checked);
-                          }}
-                          disabled={
-                            permissions.viewOnly || !access?.canEditClientPII
-                          }
-                        />
-                      }
-                      sx={{
-                        "& .MuiFormControlLabel-label": { fontSize: "0.85rem" },
-                      }}
-                      label="Telegram"
-                    />
                   </Box>
                   <Box
                     sx={{
-                      flex: 1,
-                      minWidth: "fit-content",
-                      display: "flex",
-                      alignItems: "center",
-                      "& .MuiFormControlLabel-root": {
-                        flexShrink: 0,
-                        whiteSpace: "nowrap",
-                        m: 0,
-                        columnGap: 0,
-                      },
-                      "& .MuiCheckbox-root": {
-                        p: "1px",
-                      },
+                      ...unifiedGridSx,
+                      mt: { xs: 0.25, md: 0.25 },
+                      mb: 0.5,
                     }}
                   >
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={Boolean(editedOrder.secondDriver)}
-                          onChange={(e) => {
-                            if (
+                    <Box
+                      sx={{
+                        gridColumn: {
+                          xs: "1 / -1",
+                          sm: "1 / -1",
+                          md: "1 / span 3",
+                        },
+                        minWidth: "fit-content",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0,
+                        flexWrap: "nowrap",
+                        overflowX: "auto",
+                        "& .MuiFormControlLabel-root": {
+                          flexShrink: 0,
+                          whiteSpace: "nowrap",
+                          m: 0,
+                          mr: 0.125,
+                          columnGap: 0,
+                        },
+                        "& .MuiCheckbox-root": {
+                          p: "1px",
+                        },
+                      }}
+                    >
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={Boolean(editedOrder.Viber)}
+                            onChange={(e) => {
+                              if (
+                                permissions.viewOnly ||
+                                !access?.canEditClientPII
+                              )
+                                return;
+                              updateField("Viber", e.target.checked);
+                            }}
+                            disabled={
+                              permissions.viewOnly || !access?.canEditClientPII
+                            }
+                          />
+                        }
+                        sx={{
+                          "& .MuiFormControlLabel-label": {
+                            fontSize: formMetrics.labelFontSize,
+                          },
+                        }}
+                        label="Viber"
+                      />
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={Boolean(editedOrder.Whatsapp)}
+                            onChange={(e) => {
+                              if (
+                                permissions.viewOnly ||
+                                !access?.canEditClientPII
+                              )
+                                return;
+                              updateField("Whatsapp", e.target.checked);
+                            }}
+                            disabled={
+                              permissions.viewOnly || !access?.canEditClientPII
+                            }
+                          />
+                        }
+                        sx={{
+                          "& .MuiFormControlLabel-label": {
+                            fontSize: formMetrics.labelFontSize,
+                          },
+                        }}
+                        label="WhatsApp"
+                      />
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={Boolean(editedOrder.Telegram)}
+                            onChange={(e) => {
+                              if (
+                                permissions.viewOnly ||
+                                !access?.canEditClientPII
+                              )
+                                return;
+                              updateField("Telegram", e.target.checked);
+                            }}
+                            disabled={
+                              permissions.viewOnly || !access?.canEditClientPII
+                            }
+                          />
+                        }
+                        sx={{
+                          "& .MuiFormControlLabel-label": {
+                            fontSize: formMetrics.labelFontSize,
+                          },
+                        }}
+                        label="Telegram"
+                      />
+                    </Box>
+                    <Box
+                      sx={{
+                        gridColumn: {
+                          xs: "1 / -1",
+                          sm: "1 / -1",
+                          md: "4 / span 1",
+                        },
+                        minWidth: "fit-content",
+                        display: "flex",
+                        alignItems: "center",
+                        "& .MuiFormControlLabel-root": {
+                          flexShrink: 0,
+                          whiteSpace: "nowrap",
+                          m: 0,
+                          columnGap: 0,
+                        },
+                        "& .MuiCheckbox-root": {
+                          p: "1px",
+                        },
+                      }}
+                    >
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={Boolean(editedOrder.secondDriver)}
+                            onChange={(e) => {
+                              if (
+                                permissions.viewOnly ||
+                                !permissions.fieldPermissions.secondDriver
+                              )
+                                return;
+                              updateField("secondDriver", e.target.checked);
+                            }}
+                            disabled={
                               permissions.viewOnly ||
                               !permissions.fieldPermissions.secondDriver
-                            )
-                              return;
-                            updateField("secondDriver", e.target.checked);
-                          }}
-                          disabled={
-                            permissions.viewOnly ||
-                            !permissions.fieldPermissions.secondDriver
-                          }
-                        />
-                      }
-                      sx={{
-                        "& .MuiFormControlLabel-label": { fontSize: "0.85rem" },
-                      }}
-                      label={t("order.secondDriver", {
-                        price: secondDriverPriceLabelValue,
-                      })}
-                    />
+                            }
+                          />
+                        }
+                        sx={{
+                          "& .MuiFormControlLabel-label": {
+                            fontSize: formMetrics.labelFontSize,
+                          },
+                        }}
+                        label={t("order.secondDriver", {
+                          price: secondDriverPriceLabelValue,
+                        })}
+                      />
+                    </Box>
                   </Box>
                 </Box>
-              </Box>
-            )}
+              )}
 
-            {!access?.canSeeClientPII && (
-              <Box sx={{ mb: 0.5, mt: 0.5 }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      size="small"
-                      checked={Boolean(editedOrder.secondDriver)}
-                      onChange={(e) => {
-                        if (
+              {!access?.canSeeClientPII && (
+                <Box sx={{ mb: 0.5, mt: 0.5 }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={Boolean(editedOrder.secondDriver)}
+                        onChange={(e) => {
+                          if (
+                            permissions.viewOnly ||
+                            !permissions.fieldPermissions.secondDriver
+                          )
+                            return;
+                          updateField("secondDriver", e.target.checked);
+                        }}
+                        disabled={
                           permissions.viewOnly ||
                           !permissions.fieldPermissions.secondDriver
-                        )
-                          return;
-                        updateField("secondDriver", e.target.checked);
-                      }}
-                      disabled={
-                        permissions.viewOnly ||
-                        !permissions.fieldPermissions.secondDriver
-                      }
-                    />
-                  }
-                  sx={{
-                    m: 0,
-                    "& .MuiFormControlLabel-label": { fontSize: "0.85rem" },
-                  }}
-                  label={t("order.secondDriver", {
-                    price: secondDriverPriceLabelValue,
-                  })}
-                />
-              </Box>
-            )}
+                        }
+                      />
+                    }
+                    sx={{
+                      m: 0,
+                      "& .MuiFormControlLabel-label": {
+                        fontSize: formMetrics.labelFontSize,
+                      },
+                    }}
+                    label={t("order.secondDriver", {
+                      price: secondDriverPriceLabelValue,
+                    })}
+                  />
+                </Box>
+              )}
             </Box>
 
             {/* Кнопки действий — адаптивное расположение */}
@@ -1873,27 +2237,39 @@ const EditOrderModal = ({
               <Box
                 sx={{
                   display: "flex",
-                  flexDirection: { xs: "column", sm: "row" },
+                  flexDirection: isMultiOrderView
+                    ? "row"
+                    : { xs: "column", sm: "row" },
                   justifyContent: { xs: "center", sm: "space-between" },
                   alignItems: { xs: "stretch", sm: "center" },
-                  gap: { xs: 1, sm: 0 },
+                  gap: isMultiOrderView ? 1 : { xs: 1, sm: 0 },
                 }}
               >
                 <CancelButton
                   onClick={onCloseModalEdit}
                   label={t("basic.cancel")}
                   sx={{
-                    order: { xs: 3, sm: 1 },
-                    width: { xs: "100%", sm: "auto" },
+                    order: isMultiOrderView ? 1 : { xs: 3, sm: 1 },
+                    width: isMultiOrderView
+                      ? "33%"
+                      : { xs: "100%", sm: "auto" },
+                    minHeight: isMultiOrderView ? 34 : undefined,
+                    fontSize: isMultiOrderView ? "0.72rem" : undefined,
+                    px: isMultiOrderView ? 1 : undefined,
+                    whiteSpace: "nowrap",
                   }}
                 />
                 <ConfirmButton
                   loading={isUpdating}
                   disabled={permissions.viewOnly}
                   sx={{
-                    mx: { xs: 0, sm: 2 },
-                    width: { xs: "100%", sm: "40%" },
-                    order: { xs: 1, sm: 2 },
+                    mx: isMultiOrderView ? 0 : { xs: 0, sm: 2 },
+                    width: isMultiOrderView ? "34%" : { xs: "100%", sm: "40%" },
+                    order: isMultiOrderView ? 2 : { xs: 1, sm: 2 },
+                    minHeight: isMultiOrderView ? 34 : undefined,
+                    fontSize: isMultiOrderView ? "0.72rem" : undefined,
+                    px: isMultiOrderView ? 1 : undefined,
+                    whiteSpace: "nowrap",
                   }}
                   onClick={async () => {
                     if (permissions.viewOnly) return;
@@ -1931,8 +2307,12 @@ const EditOrderModal = ({
                   disabled={permissions.viewOnly || !permissions.canDelete}
                   label={t("order.deleteOrder")}
                   sx={{
-                    width: { xs: "100%", sm: "30%" },
-                    order: { xs: 2, sm: 3 },
+                    width: isMultiOrderView ? "33%" : { xs: "100%", sm: "30%" },
+                    order: isMultiOrderView ? 3 : { xs: 2, sm: 3 },
+                    minHeight: isMultiOrderView ? 34 : undefined,
+                    fontSize: isMultiOrderView ? "0.72rem" : undefined,
+                    px: isMultiOrderView ? 1 : undefined,
+                    whiteSpace: "nowrap",
                     opacity: !permissions.canDelete ? 0.5 : 1,
                     cursor: !permissions.canDelete ? "not-allowed" : "pointer",
                   }}

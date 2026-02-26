@@ -48,6 +48,7 @@ const pulseRedBorder = keyframes`
  * @param {boolean} props.returnDisabled
  * @param {Object} props.pickupSummary - { level: "block"|"warning", message }
  * @param {Object} props.returnSummary - { level: "block"|"warning", message }
+ * @param {boolean} props.compact - Compact UI mode for multi-modal layout
  */
 export default function TimePicker({
   startTime,
@@ -60,6 +61,7 @@ export default function TimePicker({
   pickupSummary = null,
   returnSummary = null,
   onOpenBufferSettings,
+  compact = false,
 }) {
   const { t } = useTranslation();
 
@@ -127,7 +129,13 @@ export default function TimePicker({
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       {/* Два TimePicker в ряд */}
-      <Box sx={{ display: "flex", gap: { xs: 1, sm: 2 }, mb: 1 }}>
+      <Box
+        sx={{
+          display: "flex",
+          gap: compact ? { xs: 1, sm: 1 } : { xs: 1, sm: 2 },
+          mb: compact ? 0.5 : 1,
+        }}
+      >
         {/* Pickup Time — НИКОГДА не блокируется из-за конфликтов */}
         <TextField
           label={t("order.pickupTime")}
@@ -139,6 +147,18 @@ export default function TimePicker({
           fullWidth
           sx={{
             flex: 1,
+            ...(compact && {
+              "& .MuiOutlinedInput-root": {
+                height: "36px !important",
+                minHeight: "36px !important",
+              },
+              "& .MuiInputBase-input": {
+                fontSize: "0.8rem !important",
+                paddingTop: "6px !important",
+                paddingBottom: "6px !important",
+              },
+              "& .MuiInputLabel-root": { fontSize: "0.74rem !important" },
+            }),
             ...(hasPickupConflict && {
               "& .MuiOutlinedInput-root": {
                 animation: `${pulseRedBorder} 2s ease-in-out infinite`,
@@ -170,6 +190,18 @@ export default function TimePicker({
           fullWidth
           sx={{
             flex: 1,
+            ...(compact && {
+              "& .MuiOutlinedInput-root": {
+                height: "36px !important",
+                minHeight: "36px !important",
+              },
+              "& .MuiInputBase-input": {
+                fontSize: "0.8rem !important",
+                paddingTop: "6px !important",
+                paddingBottom: "6px !important",
+              },
+              "& .MuiInputLabel-root": { fontSize: "0.74rem !important" },
+            }),
             ...(hasReturnConflict && {
               "& .MuiOutlinedInput-root": {
                 animation: `${pulseRedBorder} 2s ease-in-out infinite`,

@@ -62,11 +62,36 @@ function calculateOverlapHours(start1, end1, start2, end2) {
 }
 
 /**
- * Вычисляет разницу между возвратом одного заказа и забором другого
- * (для понимания, насколько не хватает буфера)
+ * Выбирает ближайшую конфликтующую границу между двумя интервалами.
+ * Это защищает от случаев, когда одна из пар даёт очень большой отрицательный gap
+ * (например -149 ч), а реальный конфликт — на соседней границе (-2 мин).
  */
-function calculateGapHours(end1, start2) {
-  return start2.diff(end1, "hour", true);
+function resolveNearestBoundaryConflict({ currentStart, currentEnd, otherStart, otherEnd }) {
+  // currentReturn -> otherPickup
+  const gapReturnVsPickup = otherStart.diff(currentEnd, "minute", true);
+  // otherReturn -> currentPickup
+  const gapPickupVsReturn = currentStart.diff(otherEnd, "minute", true);
+
+  const returnGapAbs = Math.abs(gapReturnVsPickup);
+  const pickupGapAbs = Math.abs(gapPickupVsReturn);
+
+  // При равенстве оставляем return-сценарий (историческое поведение).
+  const usePickupSide = pickupGapAbs < returnGapAbs;
+  const actualGapMinutes = Math.round(
+    usePickupSide ? gapPickupVsReturn : gapReturnVsPickup
+  );
+
+  return {
+    conflictTime: usePickupSide ? "pickup" : "return",
+    conflictReturnTime: usePickupSide
+      ? formatTimeHHMM(otherEnd)
+      : formatTimeHHMM(currentEnd),
+    conflictPickupTime: usePickupSide
+      ? formatTimeHHMM(currentStart)
+      : formatTimeHHMM(otherStart),
+    actualGapMinutes,
+    gapHours: (usePickupSide ? gapPickupVsReturn : gapReturnVsPickup) / 60,
+  };
 }
 
 /**
@@ -139,10 +164,12 @@ export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, buffer
       otherEnd
     );
 
-    // Вычисляем разницу между возвратом и забором
-    const gapHours = calculateGapHours(confirmingEnd, otherStart);
-    // Вычисляем разницу в минутах для более точного отображения
-    const gapMinutes = Math.round(otherStart.diff(confirmingEnd, "minute", true));
+    const nearestConflict = resolveNearestBoundaryConflict({
+      currentStart: confirmingStart,
+      currentEnd: confirmingEnd,
+      otherStart,
+      otherEnd,
+    });
 
     // Форматируем даты для конфликтующего заказа
     const otherStartDate = fromServerUTC(order.rentalStartDate);
@@ -165,11 +192,13 @@ export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, buffer
       isConfirmed: order.confirmed === true,
       overlapHours: Math.round(overlapHours * 10) / 10,
       effectiveConflictHours: Math.round((overlapHours + effectiveBufferHours) * 10) / 10,
-      gapHours: Math.round(gapHours * 10) / 10,
-      gapMinutes: gapMinutes, // Добавляем минуты для форматирования сообщений
+      gapHours: Math.round(nearestConflict.gapHours * 10) / 10,
+      gapMinutes: nearestConflict.actualGapMinutes,
+      conflictTime: nearestConflict.conflictTime,
+      conflictReturnTime: nearestConflict.conflictReturnTime,
+      conflictPickupTime: nearestConflict.conflictPickupTime,
       otherTimeIn: formatTimeHHMM(otherStart),
       otherTimeOut: formatTimeHHMM(otherEnd),
-      confirmingReturnTime: formatTimeHHMM(confirmingEnd), // Время возврата подтверждаемого заказа
       otherStartDateFormatted: formatDateReadable(otherStartDate),
       otherEndDateFormatted: formatDateReadable(otherEndDate),
     };
@@ -191,14 +220,23 @@ export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, buffer
     // Используем gapMinutes, если доступен, иначе вычисляем из gapHours
     const actualGapMinutes =
       c.gapMinutes !== undefined ? c.gapMinutes : Math.round(c.gapHours * 60);
+    const conflictDirectionFields =
+      c.conflictTime === "pickup"
+        ? {
+            currentPickupTime: c.conflictPickupTime,
+            nextReturnTime: c.conflictReturnTime,
+          }
+        : {
+            currentReturnTime: c.conflictReturnTime,
+            nextPickupTime: c.conflictPickupTime,
+          };
 
     result.message = formatConfirmedConflictMessage({
       conflictingOrderName: c.customerName,
       conflictingOrderEmail: c.email,
-      currentReturnTime: c.confirmingReturnTime,
-      nextPickupTime: c.otherTimeIn,
       actualGapMinutes: actualGapMinutes,
       requiredBufferHours: effectiveBufferHours,
+      ...conflictDirectionFields,
     });
   } else if (result.affectedPendingOrders.length > 0) {
     // ⚠️ WARNING: информативно
@@ -215,15 +253,24 @@ export function analyzeConfirmationConflicts({ orderToConfirm, allOrders, buffer
       // Используем gapMinutes, если доступен, иначе вычисляем из gapHours
       const actualGapMinutes =
         c.gapMinutes !== undefined ? c.gapMinutes : Math.round(c.gapHours * 60);
+      const conflictDirectionFields =
+        c.conflictTime === "pickup"
+          ? {
+              currentPickupTime: c.conflictPickupTime,
+              nextReturnTime: c.conflictReturnTime,
+            }
+          : {
+              currentReturnTime: c.conflictReturnTime,
+              nextPickupTime: c.conflictPickupTime,
+            };
 
       result.message = formatPendingConflictMessage({
         conflictingOrderName: c.customerName,
         conflictingOrderEmail: c.email,
         conflictingOrderDates: conflictingOrderDates,
-        currentReturnTime: c.confirmingReturnTime,
-        nextPickupTime: c.otherTimeIn,
         actualGapMinutes: actualGapMinutes,
         requiredBufferHours: effectiveBufferHours,
+        ...conflictDirectionFields,
       });
     } else {
       result.message =
@@ -282,24 +329,28 @@ export function canPendingOrderBeConfirmed({ pendingOrder, allOrders, bufferHour
     );
 
     if (hasOverlap) {
-      // 🔴 BLOCK: определяем направление конфликта и времена для сообщения
-      // "Возврат в X конфликтует с забором в Y" — X предшествует Y
-      const gapReturnVsPickup = otherStart.diff(pendingEnd, "minute", true); // Возврат pending → забор confirmed
-      const gapPickupVsReturn = pendingStart.diff(otherEnd, "minute", true); // Возврат confirmed → забор pending
-      
-      const isReturnConflict = gapReturnVsPickup >= 0 && gapReturnVsPickup < effectiveBufferHours * 60;
-      const isPickupConflict = gapPickupVsReturn >= 0 && gapPickupVsReturn < effectiveBufferHours * 60;
-      
-      const conflictTime = isReturnConflict ? "return" : (isPickupConflict ? "pickup" : "return");
-
-      // В зависимости от направления подставляем правильные времена:
-      // — isPickupConflict: возврат CONFIRMED конфликтует с забором PENDING → currentReturnTime=otherEnd, nextPickupTime=pendingStart
-      // — иначе: возврат PENDING конфликтует с забором CONFIRMED → currentReturnTime=pendingEnd, nextPickupTime=otherStart
-      const conflictReturnTime = isPickupConflict ? formatTimeHHMM(otherEnd) : formatTimeHHMM(pendingEnd);
-      const conflictPickupTime = isPickupConflict ? formatTimeHHMM(pendingStart) : formatTimeHHMM(otherStart);
-      const actualGapMinutes = Math.round(
-        isPickupConflict ? gapPickupVsReturn : gapReturnVsPickup
-      );
+      const nearestConflict = resolveNearestBoundaryConflict({
+        currentStart: pendingStart,
+        currentEnd: pendingEnd,
+        otherStart,
+        otherEnd,
+      });
+      const {
+        conflictTime,
+        conflictReturnTime,
+        conflictPickupTime,
+        actualGapMinutes,
+      } = nearestConflict;
+      const conflictDirectionFields =
+        conflictTime === "pickup"
+          ? {
+              currentPickupTime: conflictPickupTime,
+              nextReturnTime: conflictReturnTime,
+            }
+          : {
+              currentReturnTime: conflictReturnTime,
+              nextPickupTime: conflictPickupTime,
+            };
 
       return {
         canConfirm: false,
@@ -323,10 +374,9 @@ export function canPendingOrderBeConfirmed({ pendingOrder, allOrders, bufferHour
               ? order.customerName.trim()
               : "Клиент",
           conflictingOrderEmail: order.email || null,
-          currentReturnTime: conflictReturnTime,
-          nextPickupTime: conflictPickupTime,
           actualGapMinutes: actualGapMinutes,
           requiredBufferHours: effectiveBufferHours,
+          ...conflictDirectionFields,
         }),
       };
     }
