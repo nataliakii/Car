@@ -48,4 +48,41 @@ describe("official customer confirmation email", () => {
     expect(pdfBytes).toBeInstanceOf(Uint8Array);
     expect(pdfBytes.length).toBeGreaterThan(1200);
   });
+
+  test("does not include franchise when insurance is not Kasko", () => {
+    const payload = {
+      locale: "ru",
+      orderId: "order-2",
+      orderNumber: "9900",
+      carNumber: "AB5678",
+      regNumber: "BB-5678",
+      carModel: "Toyota Yaris",
+      rentalStartDate: "2026-03-01T12:00:00.000Z",
+      rentalEndDate: "2026-03-04T10:00:00.000Z",
+      timeIn: "2026-03-01T12:00:00.000Z",
+      timeOut: "2026-03-04T10:00:00.000Z",
+      placeIn: "Nea Kallikratia",
+      placeOut: "Airport",
+      numberOfDays: 3,
+      ChildSeats: 0,
+      insurance: "TPL",
+      franchiseOrder: 300,
+      flightNumber: "",
+      totalPrice: 150,
+      customerName: "Иван Петров",
+      phone: "+306900000000",
+      email: "ivan@example.com",
+      secondDriver: false,
+      meetingContactPhone: "+30-697-003-47-07",
+      meetingContactChannel: "WhatsApp",
+      meetingContactName: "Orest",
+    };
+
+    const result = renderCustomerOfficialConfirmationEmail(payload);
+
+    expect(result.text).toContain("TPL");
+    expect(result.text).not.toContain("Франшиза");
+    expect(result.html).not.toContain("Франшиза");
+    expect(result.pdfData.insuranceValue).toBe("TPL");
+  });
 });

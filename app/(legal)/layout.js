@@ -1,26 +1,19 @@
 /**
- * Minimal Layout for Legal Pages
+ * Legal Layout
  * 
- * This layout is used for static legal pages to reduce JS bundle size:
+ * This layout is used for static legal pages:
  * - /privacy-policy
  * - /terms-of-service
  * - /cookie-policy
  * - /rental-terms
  * 
- * ✅ Benefits:
- * - NO heavy MUI providers
- * - NO analytics
- * - NO heavy client components
- * - Minimal JavaScript footprint
- * - SEO-friendly (SSR)
- * - Same URL structure maintained
- * 
- * ⚠️ Note: This layout uses minimal CSS-only styling.
- * For MUI components, use the main layout.
+ * Uses shared Navbar to keep header behavior consistent with main pages.
  */
 
 import "@styles/globals.css";
 import { getSeoConfig } from "@config/seo";
+import Providers from "../providers";
+import Navbar from "@app/components/Navbar";
 
 const seoConfig = getSeoConfig();
 
@@ -31,63 +24,6 @@ export const metadata = {
     follow: true,
   },
 };
-
-// Minimal header component (no client-side JS)
-function MinimalHeader() {
-  return (
-    <header
-      style={{
-        backgroundColor: "#008989",
-        padding: "16px 24px",
-        borderBottom: "1px solid #e0e0e0",
-      }}
-    >
-      <nav
-        style={{
-          maxWidth: "1200px",
-          margin: "0 auto",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <a
-          href="/"
-          style={{
-            color: "#ffffff",
-            textDecoration: "none",
-            fontSize: "20px",
-            fontWeight: "bold",
-          }}
-        >
-          NATALI CARS
-        </a>
-        <div style={{ display: "flex", gap: "24px" }}>
-          <a
-            href="/"
-            style={{
-              color: "#ffffff",
-              textDecoration: "none",
-              fontSize: "14px",
-            }}
-          >
-            Home
-          </a>
-          <a
-            href="/contacts"
-            style={{
-              color: "#ffffff",
-              textDecoration: "none",
-              fontSize: "14px",
-            }}
-          >
-            Contacts
-          </a>
-        </div>
-      </nav>
-    </header>
-  );
-}
 
 // Minimal footer component (no client-side JS)
 function MinimalFooter() {
@@ -158,20 +94,22 @@ export default function LegalLayout({ children }) {
           color: "#1a237e",
         }}
       >
-        <MinimalHeader />
-        <main
-          style={{
-            flex: 1,
-            maxWidth: "800px",
-            margin: "0 auto",
-            padding: "48px 24px",
-            width: "100%",
-            boxSizing: "border-box",
-          }}
-        >
-          {children}
-        </main>
-        <MinimalFooter />
+        <Providers>
+          <Navbar isMain={false} />
+          <main
+            style={{
+              flex: 1,
+              maxWidth: "800px",
+              margin: "0 auto",
+              padding: "110px 24px 48px",
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            {children}
+          </main>
+          <MinimalFooter />
+        </Providers>
       </body>
     </html>
   );

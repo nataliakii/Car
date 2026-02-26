@@ -82,14 +82,21 @@ function Contacts() {
         {
           email,
           title: `Сообщение из формы на сайте :${subject}`,
-          message: `${t("contact.emailNameLabel", { defaultValue: "Имя" })}: ${name}\n${t("order.email", { defaultValue: "Email" })}: ${email}\n\n${t("contact.message", { defaultValue: "Сообщение" })}:\n${message}`,
+          message: `${t("contact.emailNameLabel", {
+            defaultValue: "Имя",
+          })}: ${name}\n${t("order.email", {
+            defaultValue: "Email",
+          })}: ${email}\n\n${t("contact.message", {
+            defaultValue: "Сообщение",
+          })}:\n${message}`,
         },
         companyEmail
       );
 
       enqueueSnackbar(
         t("contact.success", {
-          defaultValue: "Сообщение успешно отправлено! Мы свяжемся с вами в ближайшее время.",
+          defaultValue:
+            "Сообщение успешно отправлено! Мы свяжемся с вами в ближайшее время.",
         }),
         { variant: "success" }
       );
@@ -100,9 +107,12 @@ function Contacts() {
       setMessage("");
     } catch (error) {
       setErrors({
-        submit: error.message || t("contact.errors.sendFailed", {
-          defaultValue: "Не удалось отправить сообщение. Пожалуйста, попробуйте позже.",
-        }),
+        submit:
+          error.message ||
+          t("contact.errors.sendFailed", {
+            defaultValue:
+              "Не удалось отправить сообщение. Пожалуйста, попробуйте позже.",
+          }),
       });
     } finally {
       setIsSubmitting(false);
@@ -110,8 +120,8 @@ function Contacts() {
   };
 
   return (
-    <Container 
-      sx={{ 
+    <Container
+      sx={{
         maxWidth: "lg",
         py: { xs: 4, sm: 6, md: 8 },
         px: { xs: 2, sm: 3, md: 4 },
@@ -154,121 +164,112 @@ function Contacts() {
             maxWidth: 600,
           }}
         >
-        <Typography
-          variant="bodyLarge"
-          align="center"
-          color="secondary.main"
-          sx={{ mb: 3 }}
-        >
-          {t("contact.description", {
-            defaultValue:
-              "Заполните форму ниже, и наша команда свяжется с вами в течение 24 часов.",
-          })}
-        </Typography>
-
-        <Box sx={{ mb: 4, textAlign: "center" }}>
           <Typography
             variant="bodyLarge"
+            align="center"
             color="secondary.main"
-            sx={{ mb: 2, fontWeight: 500 }}
+            sx={{ mb: 3 }}
           >
-            {t("contact.emailLabel", { defaultValue: "Email поддержки" })}
-          </Typography>
-          <MuiLink
-            href={`mailto:${companyEmail}`}
-            color="primary"
-            sx={{
-              fontSize: "clamp(1rem, 1.25vw, 1.125rem)",
-              textDecoration: "none",
-              display: "block",
-              "&:hover": {
-                textDecoration: "underline",
-              },
-            }}
-          >
-            {companyEmail}
-          </MuiLink>
-          <Typography
-            variant="body1"
-            color="secondary.main"
-            sx={{ mt: 1, opacity: 0.8 }}
-          >
-            {t("contact.responseTime", {
-              defaultValue: "Обычно отвечаем в течение 24 часов",
+            {t("contact.description", {
+              defaultValue:
+                "Заполните форму ниже, и наша команда свяжется с вами в ближайшее время.",
             })}
           </Typography>
-        </Box>
 
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <TextField
-            label={t("order.name", { defaultValue: "Имя" })}
-            variant="outlined"
-            fullWidth
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            error={!!errors.name}
-            helperText={errors.name}
-            required
-            size="medium"
-          />
-
-          <TextField
-            label={t("order.email", { defaultValue: "Email" })}
-            variant="outlined"
-            fullWidth
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            error={!!errors.email}
-            helperText={errors.email}
-            required
-            size="medium"
-          />
-
-          <TextField
-            label={t("contact.subject", { defaultValue: "Тема" })}
-            variant="outlined"
-            fullWidth
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            error={!!errors.subject}
-            helperText={errors.subject}
-            required
-            size="medium"
-          />
-
-          <TextField
-            label={t("contact.message", { defaultValue: "Сообщение" })}
-            variant="outlined"
-            fullWidth
-            multiline
-            rows={6}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            error={!!errors.message}
-            helperText={errors.message}
-            required
-            size="medium"
-          />
-
-          {errors.submit && (
-            <Alert severity="error" sx={{ mt: 1 }}>
-              {errors.submit}
-            </Alert>
-          )}
-
-          <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-            <ActionButton
-              onClick={handleSubmit}
-              label={t("contact.send", { defaultValue: "Отправить" })}
-              loading={isSubmitting}
-              disabled={isSubmitting}
+          <Box sx={{ mb: 4, textAlign: "center" }}>
+            <Typography
+              variant="bodyLarge"
+              color="secondary.main"
+              sx={{ mb: 2, fontWeight: 500 }}
+            >
+              {t("contact.emailLabel", { defaultValue: "Email поддержки" })}
+            </Typography>
+            <MuiLink
+              href={`mailto:${companyEmail}`}
               color="primary"
-              variant="contained"
-              size="large"
-            />
+              sx={{
+                fontSize: "clamp(1rem, 1.25vw, 1.125rem)",
+                textDecoration: "none",
+                display: "block",
+                "&:hover": {
+                  textDecoration: "underline",
+                },
+              }}
+            >
+              {companyEmail}
+            </MuiLink>
           </Box>
-        </Box>
+
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <TextField
+              label={t("order.name", { defaultValue: "Имя" })}
+              variant="outlined"
+              fullWidth
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              error={!!errors.name}
+              helperText={errors.name}
+              required
+              size="medium"
+            />
+
+            <TextField
+              label={t("order.email", { defaultValue: "Email" })}
+              variant="outlined"
+              fullWidth
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              error={!!errors.email}
+              helperText={errors.email}
+              required
+              size="medium"
+            />
+
+            <TextField
+              label={t("contact.subject", { defaultValue: "Тема" })}
+              variant="outlined"
+              fullWidth
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              error={!!errors.subject}
+              helperText={errors.subject}
+              required
+              size="medium"
+            />
+
+            <TextField
+              label={t("contact.message", { defaultValue: "Сообщение" })}
+              variant="outlined"
+              fullWidth
+              multiline
+              rows={6}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              error={!!errors.message}
+              helperText={errors.message}
+              required
+              size="medium"
+            />
+
+            {errors.submit && (
+              <Alert severity="error" sx={{ mt: 1 }}>
+                {errors.submit}
+              </Alert>
+            )}
+
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+              <ActionButton
+                onClick={handleSubmit}
+                label={t("contact.send", { defaultValue: "Отправить" })}
+                loading={isSubmitting}
+                disabled={isSubmitting}
+                color="primary"
+                variant="contained"
+                size="large"
+              />
+            </Box>
+          </Box>
         </Box>
       </Box>
     </Container>

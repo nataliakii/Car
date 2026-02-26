@@ -261,7 +261,7 @@
   "contact": {
     "title": "Contact Us",
     "subtitle": "Have questions? We're always happy to help!",
-    "description": "Fill out the form below and our team will get back to you within 24 hours.",
+    "description": "Fill out the form below and our team will get back to you soon.",
     "emailLabel": "Support Email",
     "responseTime": "We usually respond within 24 hours",
     "haveQuestions": "Have questions?",
@@ -340,7 +340,7 @@
     "phoneInlineLabel": "tel.",
     "emailInlineLabel": "e-mail",
     "franchiseLabel": "Franchise",
-    "meetingContactLabel": "Meeting contact at the airport",
+    "meetingContactLabel": "Meeting contact",
     "meetingContactFallback": "Not specified",
     "yes": "Yes",
     "no": "No",

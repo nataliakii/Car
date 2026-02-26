@@ -59,6 +59,17 @@ function formatAmount(value) {
   return numeric.toFixed(2).replace(/\.?0+$/, "");
 }
 
+function isKaskoInsurance(value) {
+  const normalized = normalizeText(value).toLowerCase();
+  if (!normalized) return false;
+  return (
+    normalized === "cdw" ||
+    normalized === "kasko" ||
+    normalized === "casco" ||
+    normalized === "каско"
+  );
+}
+
 function buildCustomerEmailViewModel(payload) {
   const t = getCustomerEmailStrings(payload.locale);
   const locale = normalizeLocale(payload.locale);
@@ -89,8 +100,9 @@ function buildCustomerEmailViewModel(payload) {
     franchiseNumber > 0
       ? formatAmount(franchiseNumber)
       : "";
+  const shouldShowFranchise = isKaskoInsurance(insurance);
   const insuranceWithFranchise =
-    insurance && franchiseAmount
+    insurance && franchiseAmount && shouldShowFranchise
       ? `${insurance} (${t.franchiseLabel || "Franchise"} ${franchiseAmount} EUR)`
       : insurance;
   const secondDriverEnabled = payload.secondDriver === true;
@@ -338,7 +350,7 @@ export function renderCustomerOfficialConfirmationEmail(payload) {
   const emailLabel = t.emailLabel || "Email";
   const phoneLabel = t.phoneLabel || "Phone";
   const meetingContactLabel =
-    t.meetingContactLabel || "Meeting contact at the airport";
+    t.meetingContactLabel || "Meeting contact";
   const meetingContactFallback = t.meetingContactFallback || "—";
 
   const rentalPeriodValue =

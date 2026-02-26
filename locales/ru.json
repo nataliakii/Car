@@ -261,7 +261,7 @@
   "contact": {
     "title": "Свяжитесь с нами",
     "subtitle": "У вас есть вопросы? Мы всегда рады помочь!",
-    "description": "Заполните форму ниже, и наша команда свяжется с вами в течение 24 часов.",
+    "description": "Заполните форму ниже, и наша команда свяжется с вами в ближайшее время.",
     "emailLabel": "Email поддержки",
     "responseTime": "Обычно отвечаем в течение 24 часов",
     "haveQuestions": "Остались вопросы?",
@@ -340,7 +340,7 @@
     "phoneInlineLabel": "тел.",
     "emailInlineLabel": "e-mail",
     "franchiseLabel": "Франшиза",
-    "meetingContactLabel": "Контакт встречи в аэропорту",
+    "meetingContactLabel": "Контакт для встречи",
     "meetingContactFallback": "Не указан",
     "yes": "Да",
     "no": "Нет",
