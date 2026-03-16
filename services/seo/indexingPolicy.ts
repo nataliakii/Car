@@ -12,7 +12,8 @@ import {
   getLocationPathFromLocation,
 } from "@domain/locationSeo/locationSeoService";
 
-export const INDEXING_MODE = "allowlist" as const;
+export type IndexingMode = "allowlist" | "all";
+export const INDEXING_MODE: IndexingMode = "allowlist";
 
 /** Paths for locations in NOINDEX_LOCATION_IDS (all locales). */
 function buildNoindexLocationPaths(): Set<string> {
