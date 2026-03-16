@@ -326,7 +326,7 @@ export default async function LocationHierarchyPage({ params }) {
                 title={prioritizedTitle}
                 introText={firstPara}
                 skipTitle
-                inlineLink={{ word: "онлайн", href: `/${locale}/cars` }}
+                inlineLink={{ word: "онлайн", href: `/${locale}` }}
               />
             );
           })()}
