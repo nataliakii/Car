@@ -1850,8 +1850,18 @@ const locationContentByKeyRaw: Record<
       ],
     },
     de: {
+      shortName: "Thessaloniki",
+      h1: "Mietwagen in Thessaloniki",
+      seoTitle: "Mietwagen Thessaloniki | Natali Cars",
+      seoDescription:
+        "Mieten Sie ein Auto in Thessaloniki mit Abholung in der Stadt, direkter Unterstützung und einfacher Weiterfahrt nach Chalkidiki.",
       introText:
         "Thessaloniki ist die zweitgroesste Stadt Griechenlands und das wichtigste Zentrum Nordgriechenlands. Natali Cars hilft Ihnen, die Fahrzeuguebergabe fuer Stadtfahrten, Geschaeftsreisen und Transfers nach Chalkidiki schnell zu organisieren. Buchen Sie Ihren Mietwagen online in Thessaloniki ohne Kaution, mit Uebergabe an Ihrer Unterkunft oder in der Stadt und mit 24/7-Support.",
+      areaServed: ["Zentrum Thessaloniki", "Perea", "Kalamaria"],
+      pickupLocation: "Abholpunkt Thessaloniki",
+      offerName: "Mietwagen-Angebot Thessaloniki",
+      offerDescription:
+        "Stadt-Abholung für kurze Aufenthalte, Geschäftsreisen und direkte Fahrt nach Chalkidiki.",
       faq: [
         {
           question:
@@ -1874,8 +1884,18 @@ const locationContentByKeyRaw: Record<
       ],
     },
     bg: {
+      shortName: "Солун",
+      h1: "Кола под наем в Солун",
+      seoTitle: "Кола под наем Солун | Natali Cars",
+      seoDescription:
+        "Наемете кола в Солун с получаване в града, директна поддръжка и удобен трансфер до Халкидики.",
       introText:
         "Солун е вторият по големина град в Гърция и основният център на Северна Гърция. Natali Cars ще ви помогне бързо да организирате получаването на автомобил за пътувания в града, бизнес посещения и трансфери до Халкидики. Резервирайте онлайн кола в Солун без депозит с получаване при мястото ви за настаняване или в града и с поддръжка 24/7.",
+      areaServed: ["Център Солун", "Перея", "Каламария"],
+      pickupLocation: "Точка за получаване Солун",
+      offerName: "Оферта за наем в Солун",
+      offerDescription:
+        "Получаване в града за кратки престои, бизнес посещения и трансфер до Халкидики.",
       faq: [
         {
           question:
@@ -1898,8 +1918,18 @@ const locationContentByKeyRaw: Record<
       ],
     },
     ro: {
+      shortName: "Salonic",
+      h1: "Închirieri auto în Salonic",
+      seoTitle: "Închirieri auto Salonic | Natali Cars",
+      seoDescription:
+        "Închiriați mașină în Salonic cu preluare în oraș, asistență directă și transfer ușor spre Halkidiki.",
       introText:
         "Salonic este al doilea oraș ca mărime din Grecia și principalul centru al Greciei de Nord. Natali Cars vă ajută să organizați rapid preluarea mașinii pentru deplasări în oraș, vizite de afaceri și transferuri spre Halkidiki. Rezervați online mașina în Salonic fără depozit, cu preluare la cazare sau în oraș și cu asistență 24/7.",
+      areaServed: ["Centrul Salonicului", "Perea", "Kalamaria"],
+      pickupLocation: "Punct de preluare Salonic",
+      offerName: "Ofertă închirieri Salonic",
+      offerDescription:
+        "Preluare în oraș pentru scurte șederi, vizite de afaceri și transfer spre Halkidiki.",
       faq: [
         {
           question:
@@ -1922,8 +1952,18 @@ const locationContentByKeyRaw: Record<
       ],
     },
     sr: {
+      shortName: "Solun",
+      h1: "Rent a car u Solunu",
+      seoTitle: "Rent a car Solun | Natali Cars",
+      seoDescription:
+        "Iznajmite auto u Solunu sa preuzimanjem u gradu, direktnom podrškom i transferom ka Halkidikiju.",
       introText:
         "Solun je drugi najveći grad u Grčkoj i glavni centar severne Grčke. Natali Cars vam pomaže da brzo organizujete preuzimanje automobila za vožnju po gradu, poslovne posete i transfere ka Halkidikiju. Rezervišite online auto u Solunu bez depozita, uz preuzimanje kod smeštaja ili u gradu i uz podršku 24/7.",
+      areaServed: ["Centar Soluna", "Perea", "Kalamaria"],
+      pickupLocation: "Tačka preuzimanja Solun",
+      offerName: "Ponuda iznajmljivanja Solun",
+      offerDescription:
+        "Preuzimanje u gradu za kratke boravke, poslovne posete i transfer ka Halkidikiju.",
       faq: [
         {
           question:
@@ -2202,6 +2242,18 @@ const locationContentByKeyRaw: Record<
       ],
     },
     de: {
+      shortName: "Chalkidiki",
+      h1: "Mietwagen in Chalkidiki",
+      seoTitle: "Mietwagen Chalkidiki Region | Natali Cars",
+      seoDescription:
+        "Mieten Sie ein Auto in Chalkidiki mit Abdeckung für regionale Zentren, Strandzonen und wichtige Transferrouten.",
+      introText:
+        "Chalkidiki ist eine der beliebtesten Ferienregionen Griechenlands, wo Autovermietung besonders praktisch für Fahrten zwischen Stränden, Dörfern und den Halbinseln Kassandra und Sithonia ist. Natali Cars hilft Ihnen, schnell einen Mietwagen in Chalkidiki für einen komfortablen Urlaub zu organisieren.",
+      areaServed: ["Nea Kallikratia", "Sithonia", "Kassandra"],
+      pickupLocation: "Regionale Abholung Chalkidiki",
+      offerName: "Regionales Mietwagen-Angebot Chalkidiki",
+      offerDescription:
+        "Regionale Abholung für Strände, Villen und Familienreisen in Chalkidiki.",
       faq: [
         {
           question:
@@ -2224,6 +2276,18 @@ const locationContentByKeyRaw: Record<
       ],
     },
     bg: {
+      shortName: "Халкидики",
+      h1: "Кола под наем в Халкидики",
+      seoTitle: "Кола под наем регион Халкидики | Natali Cars",
+      seoDescription:
+        "Наемете кола в Халкидики с покритие за регионални центрове, плажни зони и основни маршрути.",
+      introText:
+        "Халкидики е един от най-популярните курортни региони на Гърция, където наемът на кола е особено удобен за пътувания между плажове, села и полуостровите Касандра и Ситония. Natali Cars ви помага бързо да организирате наем на кола в Халкидики за комфортен отпуск.",
+      areaServed: ["Неа Каликратия", "Ситония", "Касандра"],
+      pickupLocation: "Регионална точка за получаване Халкидики",
+      offerName: "Регионална оферта за наем Халкидики",
+      offerDescription:
+        "Регионално получаване за плажове, вили и семейни пътувания в Халкидики.",
       faq: [
         {
           question:
@@ -2246,6 +2310,18 @@ const locationContentByKeyRaw: Record<
       ],
     },
     ro: {
+      shortName: "Halkidiki",
+      h1: "Închirieri auto în Halkidiki",
+      seoTitle: "Închirieri auto regiunea Halkidiki | Natali Cars",
+      seoDescription:
+        "Închiriați mașină în Halkidiki cu acoperire pentru centre regionale, zone de plajă și rute principale de transfer.",
+      introText:
+        "Halkidiki este una dintre cele mai populare regiuni de vacanță din Grecia, unde închirierea auto este deosebit de convenabilă pentru deplasări între plaje, sate și peninsulele Kassandra și Sithonia. Natali Cars vă ajută să organizați rapid închirierea auto în Halkidiki pentru o vacanță confortabilă.",
+      areaServed: ["Nea Kallikratia", "Sithonia", "Kassandra"],
+      pickupLocation: "Punct de preluare regional Halkidiki",
+      offerName: "Ofertă închirieri regională Halkidiki",
+      offerDescription:
+        "Preluare regională pentru plaje, vile și călătorii de familie în Halkidiki.",
       faq: [
         {
           question:
@@ -2268,6 +2344,18 @@ const locationContentByKeyRaw: Record<
       ],
     },
     sr: {
+      shortName: "Halkidiki",
+      h1: "Rent a car u Halkidikiju",
+      seoTitle: "Rent a car region Halkidiki | Natali Cars",
+      seoDescription:
+        "Iznajmite auto u Halkidikiju sa pokrivanjem regionalnih centara, plažnih zona i glavnih transfer ruta.",
+      introText:
+        "Halkidiki je jedan od najpopularnijih turističkih regiona Grčke, gde je iznajmljivanje auta posebno praktično za putovanja između plaža, sela i poluostrva Kassandra i Sithonia. Natali Cars vam pomaže da brzo organizujete iznajmljivanje auta u Halkidikiju za udoban odmor.",
+      areaServed: ["Nea Kallikratia", "Sithonia", "Kassandra"],
+      pickupLocation: "Regionalna tačka preuzimanja Halkidiki",
+      offerName: "Regionalna ponuda iznajmljivanja Halkidiki",
+      offerDescription:
+        "Regionalno preuzimanje za plaže, vile i porodična putovanja u Halkidikiju.",
       faq: [
         {
           question:

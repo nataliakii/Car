@@ -1,4 +1,5 @@
 import { revalidateTag } from "next/cache";
+import { API_PATHS } from "@config/apiPaths";
 import sendEmail from "./sendEmail";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -47,7 +48,7 @@ export function getApiUrl(path) {
 // Fetch a single car by ID using fetch
 export const fetchCar = async (id) => {
   try {
-    const response = await fetch(getApiUrl(`/api/car/${id}`), {
+    const response = await fetch(getApiUrl(API_PATHS.CAR_BY_ID(id)), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -70,7 +71,7 @@ export const fetchCar = async (id) => {
 export const fetchCarBySlug = async (slug) => {
   try {
     const response = await fetch(
-      getApiUrl(`/api/car/slug/${encodeURIComponent(slug)}`),
+      getApiUrl(API_PATHS.CAR_BY_SLUG(slug)),
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -88,7 +89,7 @@ export const fetchCarBySlug = async (slug) => {
 // Fetch all cars using fetch
 export const fetchAll = async () => {
   try {
-    const response = await fetch(getApiUrl(`/api/car/all`), {
+    const response = await fetch(getApiUrl(API_PATHS.CAR_ALL), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -127,7 +128,7 @@ export const fetchAllCars = async (options = {}) => {
       ...(cookie ? { Cookie: cookie } : {}),
     };
     const response = await fetch(
-      getApiUrl(`/api/car/all`),
+      getApiUrl(API_PATHS.CAR_ALL),
       skipCache
         ? {
             method: "POST",
@@ -149,7 +150,7 @@ export const fetchAllCars = async (options = {}) => {
     if (!response.ok) {
       const body = await response.text().catch(() => "<no body>");
       console.error("Fetch /api/car/all failed", {
-        url: getApiUrl(`/api/car/all`),
+        url: getApiUrl(API_PATHS.CAR_ALL),
         skipCache,
         status: response.status,
         body,
@@ -172,7 +173,7 @@ export const fetchAllCars = async (options = {}) => {
 // ============================================================
 export const reFetchActiveOrders = async () => {
   try {
-    const response = await fetch(getApiUrl(`/api/order/refetch-active`), {
+    const response = await fetch(getApiUrl(API_PATHS.ORDER_REFETCH_ACTIVE), {
       method: "POST",
       next: { cache: "no-store" },
     });
@@ -193,7 +194,7 @@ export const reFetchActiveOrders = async () => {
 // ============================================================
 export const reFetchAllOrders = async () => {
   try {
-    const response = await fetch(getApiUrl(`/api/order/refetch`), {
+    const response = await fetch(getApiUrl(API_PATHS.ORDER_REFETCH), {
       next: { cache: "no-store" },
       method: "POST",
     });
@@ -211,7 +212,7 @@ export const reFetchAllOrders = async () => {
 //Adding new order using new order api
 export const addOrderNew = async (orderData) => {
   try {
-    const response = await fetch(getApiUrl(`/api/order/add`), {
+    const response = await fetch(getApiUrl(API_PATHS.ORDER_ADD), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -263,7 +264,7 @@ export const addOrderNew = async (orderData) => {
 // Fetch orders by car ID using fetch
 export const fetchOrdersByCar = async (carId) => {
   try {
-    const response = await fetch(getApiUrl(`/api/order/${carId}`), {
+    const response = await fetch(getApiUrl(API_PATHS.ORDER_BY_CAR(carId)), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -293,7 +294,7 @@ export const fetchOrdersByCar = async (carId) => {
  */
 export const moveOrderToCar = async (orderId, newCarId, newCarNumber) => {
   try {
-    const response = await fetch("/api/order/update/moveCar", {
+    const response = await fetch(API_PATHS.ORDER_UPDATE_MOVE_CAR, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -341,7 +342,7 @@ export const changeRentalDates = async (
   numberOfDays // <-- добавить
 ) => {
   try {
-    const response = await fetch("/api/order/update/changeDates", {
+    const response = await fetch(API_PATHS.ORDER_UPDATE_CHANGE_DATES, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -448,7 +449,7 @@ export const changeRentalDates = async (
 export const toggleConfirmedStatus = async (orderId) => {
   try {
     const response = await fetch(
-      getApiUrl(`/api/order/update/switchConfirm/${orderId}`),
+      getApiUrl(API_PATHS.ORDER_UPDATE_SWITCH_CONFIRM(orderId)),
       {
         method: "PATCH",
         headers: {
@@ -512,7 +513,7 @@ export const toggleConfirmedStatus = async (orderId) => {
 
 // UPDATE 3.  action for changing customer information
 export const updateCustomerInfo = async (orderId, updateData) => {
-  const response = await fetch("/api/order/update/customer", {
+  const response = await fetch(API_PATHS.ORDER_UPDATE_CUSTOMER, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -558,7 +559,7 @@ export const updateCustomerInfo = async (orderId, updateData) => {
  */
 export const updateOrder = async (orderId, payload) => {
   try {
-    const response = await fetch(getApiUrl(`/api/order/update/${orderId}`), {
+    const response = await fetch(getApiUrl(API_PATHS.ORDER_UPDATE(orderId)), {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -650,7 +651,7 @@ export const updateOrder = async (orderId, payload) => {
  */
 export const updateOrderInline = async (orderId, fields) => {
   // 🔧 UNIFIED: Use single endpoint for all updates
-  const response = await fetch(getApiUrl(`/api/order/update/${orderId}`), {
+  const response = await fetch(getApiUrl(API_PATHS.ORDER_UPDATE(orderId)), {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -721,7 +722,7 @@ export const updateOrderInline = async (orderId, fields) => {
  */
 export const updateOrderConfirmation = async (orderId) => {
   const response = await fetch(
-    getApiUrl(`/api/order/update/switchConfirm/${orderId}`),
+    getApiUrl(API_PATHS.ORDER_UPDATE_SWITCH_CONFIRM(orderId)),
     {
       method: "PATCH",
       headers: {
@@ -774,7 +775,7 @@ export const updateOrderConfirmation = async (orderId) => {
 
 export const addCar = async (formData) => {
   try {
-    const response = await fetch("/api/car/addOne", {
+    const response = await fetch(API_PATHS.CAR_ADD_ONE, {
       method: "POST",
       body: formData,
     });
@@ -818,7 +819,7 @@ export const deleteCar = async (carId) => {
 // UPDATE car
 export const updateCar = async (updatedCar) => {
   try {
-    const response = await fetch(getApiUrl(`/api/car/update`), {
+    const response = await fetch(getApiUrl(API_PATHS.CAR_UPDATE), {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -839,7 +840,7 @@ export const updateCar = async (updatedCar) => {
 
 export async function getOrderById(orderId) {
   try {
-    const response = await fetch(getApiUrl(`/api/order/refetch/${orderId}`), {
+    const response = await fetch(getApiUrl(API_PATHS.ORDER_REFETCH_ONE(orderId)), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -883,7 +884,7 @@ export async function fetchCompany(companyId, options = {}) {
     const skipCache = Boolean(options.skipCache);
     const cacheBuster = skipCache ? `?ts=${Date.now()}` : "";
     const response = await fetch(
-      getApiUrl(`/api/company/${companyId}${cacheBuster}`),
+      getApiUrl(`${API_PATHS.COMPANY(companyId)}${cacheBuster}`),
       {
         method: "GET",
         headers: {
@@ -937,7 +938,7 @@ export async function updateCompanyBuffer(companyId, bufferTime) {
       };
     }
 
-    const path = `/api/company/buffer/${String(companyId)}`;
+    const path = API_PATHS.COMPANY_BUFFER(String(companyId));
     const url =
       typeof window !== "undefined"
         ? `${window.location.origin}${path}`
@@ -1048,7 +1049,7 @@ export async function calculateTotalPrice(
     }
 
     const response = await fetch(
-      getApiUrl(`/api/order/calcTotalPrice`),
+      getApiUrl(API_PATHS.ORDER_CALC_TOTAL_PRICE),
       fetchOptions
     );
 
@@ -1074,7 +1075,7 @@ export async function calculateTotalPrice(
  */
 export async function fetchAdminOrders() {
   try {
-    const response = await fetch(getApiUrl(`/api/admin/orders`), {
+    const response = await fetch(getApiUrl(API_PATHS.ADMIN_ORDERS), {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -1101,7 +1102,7 @@ export async function fetchAdminOrders() {
  */
 export async function deleteOrder(orderId) {
   try {
-    const response = await fetch(getApiUrl(`/api/order/deleteOne/${orderId}`), {
+    const response = await fetch(getApiUrl(API_PATHS.ORDER_DELETE_ONE(orderId)), {
       method: "DELETE",
     });
 
@@ -1430,7 +1431,7 @@ export async function sendTelegramMessage(message) {
   }
 
   try {
-    const response = await fetch(getApiUrl(`/api/telegram/send`), {
+    const response = await fetch(getApiUrl(API_PATHS.TELEGRAM_SEND), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -9,11 +9,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Car } from "@models/car";
 import { connectToDB } from "@lib/database";
+import { PRODUCTION_BASE_URL } from "@config/seo";
 
 const ALLOWED_ORIGIN = "https://bbqr.site";
 const AUTH_SCHEME = "Bearer";
-
-const DEFAULT_BASE_URL = "https://natali-cars.com";
 
 /** Extended format for external listings (e.g. BBQR, Nea Kallikratia Guide). */
 export type InternalCarItem = {
@@ -42,7 +41,7 @@ function getBookingBaseUrl(): string {
     process.env.NEXT_PUBLIC_API_BASE_URL ??
     process.env.NEXT_PUBLIC_SITE_URL ??
     process.env.VERCEL_URL;
-  if (typeof raw !== "string" || !raw.trim()) return DEFAULT_BASE_URL;
+  if (typeof raw !== "string" || !raw.trim()) return PRODUCTION_BASE_URL;
   const url = raw.trim().replace(/\/+$/, "");
   return url.startsWith("http") ? url : `https://${url}`;
 }

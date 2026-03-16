@@ -1,5 +1,5 @@
 import { Car } from "@models/car";
-import { connectToDB } from "@utils/database";
+import { connectToDB } from "@lib/database";
 import { carsData as initialCarsData } from "@utils/initialData";
 import { revalidatePath, revalidateTag } from "next/cache";
 

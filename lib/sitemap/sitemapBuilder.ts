@@ -11,8 +11,11 @@ import {
   getSupportedLocales,
 } from "@domain/locationSeo/locationSeoService";
 import {
+  SITEMAP_STATIC_PAGES,
+  isNoindexLocation,
+} from "@config/sitemapConfig";
+import {
   LOCATION_IDS,
-  STATIC_PAGE_KEYS,
   type LocationId,
   type StaticPageKey,
 } from "@domain/locationSeo/locationSeoKeys";
@@ -160,9 +163,7 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
   }
 
   // Only SEO-relevant static pages. Exclude legal/technical (noindex) from sitemap.
-  const staticPagesInSitemap: StaticPageKey[] = [STATIC_PAGE_KEYS.CONTACTS];
-
-  for (const pageKey of staticPagesInSitemap) {
+  for (const pageKey of SITEMAP_STATIC_PAGES) {
     const alternates = buildLocaleStaticAlternates(pageKey);
     for (const locale of supportedLocales) {
       entries.push({
@@ -179,6 +180,8 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
 
   const defaultLocations = getAllLocationsForLocale(defaultLocale);
   for (const location of defaultLocations) {
+    if (isNoindexLocation(location.id)) continue;
+
     const alternates = buildHreflangAlternates(getLocationAlternatesById(location.id));
     for (const locale of supportedLocales) {
       const localizedLocation = getAllLocationsForLocale(locale).find(

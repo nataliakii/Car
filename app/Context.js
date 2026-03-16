@@ -16,6 +16,7 @@ import {
   updateCar,
   deleteCar,
 } from "@utils/action";
+import { COMPANY_ID } from "@config/company";
 import { buildPendingConfirmBlockMap } from "@/domain/orders/buildPendingConfirmBlockMap";
 
 const MainContext = createContext({
@@ -116,9 +117,8 @@ export const MainContextProvider = ({
       setCompanyLoading(true);
       setCompanyError(null);
       try {
-        const companyId = "679903bd10e6c8a8c0f027bc";
         const { fetchCompany } = await import("@utils/action");
-        const freshCompany = await fetchCompany(companyId);
+        const freshCompany = await fetchCompany(COMPANY_ID);
         setCompany(freshCompany);
         companyDataRef.current = freshCompany;
       } catch (err) {
