@@ -22,7 +22,8 @@ const fallbackCompanyData = {
   coords: { lat: "40.311273589340836", lon: "23.06426516796098" },
 };
 
-const PRODUCTION_BASE_URL = "https://natali-cars.com";
+/** Single source of truth for production base URL. */
+export const PRODUCTION_BASE_URL = "https://natali-cars.com";
 
 // Base URL: always canonical production — no Vercel/preview hosts (sitemap, canonical, hreflang)
 const getBaseUrl = () => PRODUCTION_BASE_URL;

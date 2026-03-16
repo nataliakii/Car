@@ -13,10 +13,11 @@ import {
   getStaticPageSeo,
   normalizeLocale,
 } from "@domain/locationSeo/locationSeoService";
+import { type StaticPageKey } from "@domain/locationSeo/locationSeoKeys";
 import {
-  STATIC_PAGE_KEYS,
-  type StaticPageKey,
-} from "@domain/locationSeo/locationSeoKeys";
+  NOINDEX_STATIC_PAGES,
+  isNoindexLocation,
+} from "@config/sitemapConfig";
 import type { LocationSeoResolved } from "@domain/locationSeo/types";
 import { getAirportPrioritySeo, isPriorityAirportLocation } from "./airportPrioritySeo";
 import { buildHreflangAlternates } from "./hreflangBuilder";
@@ -134,6 +135,7 @@ export function buildLocationMetadata(location: LocationSeoResolved): Metadata {
     canonicalPath,
     alternatePathsByLocale: getLocationAlternatesById(location.id),
     locale: location.locale,
+    noindex: isNoindexLocation(location.id),
   });
 }
 
@@ -164,14 +166,6 @@ export function buildCarMetadata(input: {
     locale,
   });
 }
-
-/** Static pages that must not be indexed (legal/technical). Canonical and hreflang still set for consistency. */
-const NOINDEX_STATIC_PAGES: Set<StaticPageKey> = new Set([
-  STATIC_PAGE_KEYS.COOKIE_POLICY,
-  STATIC_PAGE_KEYS.PRIVACY_POLICY,
-  STATIC_PAGE_KEYS.TERMS_OF_SERVICE,
-  STATIC_PAGE_KEYS.RENTAL_TERMS,
-]);
 
 export function buildStaticPageMetadata(
   localeCandidate: string | undefined | null,

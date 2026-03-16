@@ -1,6 +1,5 @@
 import { MetadataRoute } from "next";
-
-const PRODUCTION_BASE_URL = "https://natali-cars.com";
+import { PRODUCTION_BASE_URL } from "@config/seo";
 
 export default function robots(): MetadataRoute.Robots {
   const baseUrl = PRODUCTION_BASE_URL;

@@ -1,12 +1,15 @@
 import { getDefaultLocale } from "@domain/locationSeo/locationSeoService";
 import type { LocationAlternateMap } from "@domain/locationSeo/types";
-import { shouldIndexPath } from "./indexingPolicy";
 import { toAbsoluteUrl } from "./urlBuilder";
 
+/**
+ * Builds hreflang alternates for all locale versions.
+ * Includes ALL alternates (no filtering by indexability) so Google understands
+ * language/region relationships and avoids "Duplicate, Google chose different canonical" errors.
+ * Indexability is controlled by canonical + robots meta.
+ */
 export function buildHreflangAlternates(pathsByLocale: LocationAlternateMap): Record<string, string> {
-  const localeEntries = Object.entries(pathsByLocale).filter(([, path]) =>
-    shouldIndexPath(path)
-  );
+  const localeEntries = Object.entries(pathsByLocale).filter(([, path]) => path);
   const alternates: Record<string, string> = {};
 
   if (localeEntries.length === 0) {

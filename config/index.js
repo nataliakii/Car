@@ -10,6 +10,9 @@
 // Company ID — the ONLY hardcoded value
 export { COMPANY_ID } from "./company";
 
+// API paths — single source for internal route paths
+export { API_PATHS } from "./apiPaths";
+
 // Booking rules — FALLBACK values (real values from MongoDB)
 export { BOOKING_RULES } from "./bookingRules";
 
