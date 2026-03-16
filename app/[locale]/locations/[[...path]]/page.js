@@ -35,6 +35,7 @@ import {
   getAirportPrioritySeo,
   isPriorityAirportLocation,
 } from "@/services/seo/airportPrioritySeo";
+import { getOnlineInlineLinkWord } from "@/services/seo/inlineLinkWord";
 import { buildLocationMetadata, buildLocationsIndexMetadata } from "@/services/seo/metadataBuilder";
 import {
   SeoFaqBlock,
@@ -326,7 +327,7 @@ export default async function LocationHierarchyPage({ params }) {
                 title={prioritizedTitle}
                 introText={firstPara}
                 skipTitle
-                inlineLink={{ word: "онлайн", href: `/${locale}` }}
+                inlineLink={{ word: getOnlineInlineLinkWord(locale), href: `/${locale}` }}
               />
             );
           })()}
