@@ -4,7 +4,6 @@ import {
   HUB_NAV_LOCATION_IDS,
   LOCATION_IDS,
   LOCATION_ROUTE_SEGMENT,
-  MAIN_NAV_REGION_IDS,
   REQUIRED_CONTENT_LOCALES,
   STATIC_PAGE_KEYS,
   SUPPORTED_LOCALES,
@@ -24,6 +23,11 @@ import {
   locationContentByKey,
   locationSeoRepo,
 } from "./locationSeoRepo";
+import {
+  getLocationHeroSubtitleSentence,
+  getLocationBookingSentence,
+  shouldApplyLocationBookingCopyToId,
+} from "./locationBookingCopy";
 import {
   getLocationPathSegments,
   resolveLocationIdByPath,
@@ -64,6 +68,36 @@ const PRIMARY_SEO_LOCATION_IDS = new Set<LocationId>([
   LOCATION_IDS.NEA_KALLIKRATIA,
 ]);
 
+const DISTANCE_TO_THESSALONIKI_HIDDEN_LOCATION_IDS = new Set<LocationId>([
+  LOCATION_IDS.THESSALONIKI,
+  LOCATION_IDS.THESSALONIKI_AIRPORT,
+]);
+
+const LEGACY_SINGLE_SEGMENT_LOCATION_SLUGS: Partial<
+  Record<SupportedLocale, Record<string, LocationId>>
+> = {
+  el: {
+    "enoikiasi-autokinitou-aerodromio-thessaloniki":
+      LOCATION_IDS.THESSALONIKI_AIRPORT,
+    "enoikiasi-nea-kallikratia": LOCATION_IDS.NEA_KALLIKRATIA,
+  },
+};
+
+const LEGACY_LOCATION_SLUGS: Partial<
+  Record<LocationId, Partial<Record<SupportedLocale, string>>>
+> = {
+  [LOCATION_IDS.AGIOS_NIKOLAOS_HALKIDIKI]: {
+    en: "car-rental-agios-nikolaos-halkidiki",
+    ru: "arenda-avto-agios-nikolaos-halkidiki",
+    uk: "orenda-avto-agios-nikolaos-halkidiki",
+    el: "enoikiasi-agios-nikolaos-halkidiki",
+    de: "mietwagen-agios-nikolaos-halkidiki",
+    bg: "koli-pod-naem-agios-nikolaos-halkidiki",
+    ro: "inchirieri-auto-agios-nikolaos-halkidiki",
+    sr: "rent-a-car-agios-nikolaos-halkidiki",
+  },
+};
+
 function normalizeLocaleCandidate(locale: string): SupportedLocale {
   const normalized = locale.toLowerCase().split("-")[0];
   return SUPPORTED_LOCALE_SET.has(normalized)
@@ -81,6 +115,40 @@ function fillTemplate(template: string, values: Record<string, string>): string 
   return Object.entries(values).reduce(
     (acc, [key, value]) => acc.replaceAll(`{${key}}`, value),
     template
+  );
+}
+
+function getSlugCandidatesForLocale(
+  repoItem: LocationSeoRepoItem,
+  locale: SupportedLocale
+): string[] {
+  const candidates = [repoItem.slugByLocale[locale]];
+  const legacySlug = LEGACY_LOCATION_SLUGS[repoItem.id]?.[locale];
+  if (legacySlug && legacySlug !== repoItem.slugByLocale[locale]) {
+    candidates.push(legacySlug);
+  }
+  return candidates.filter(Boolean);
+}
+
+function findLocationRepoItemByLocalizedSlug(
+  locale: SupportedLocale,
+  slugCandidate: string
+): LocationSeoRepoItem | undefined {
+  return locationSeoRepo.find((item) =>
+    getSlugCandidatesForLocale(item, locale).includes(slugCandidate)
+  );
+}
+
+function matchesAnyKnownLocationSlug(
+  repoItem: LocationSeoRepoItem,
+  slugCandidate: string
+): boolean {
+  if (repoItem.canonicalSlug === slugCandidate) {
+    return true;
+  }
+
+  return SUPPORTED_LOCALES.some((locale) =>
+    getSlugCandidatesForLocale(repoItem, locale).includes(slugCandidate)
   );
 }
 
@@ -310,6 +378,30 @@ export function getLocationBySeoSlug(
   return getLocationById(locale, locationId);
 }
 
+/**
+ * Resolve a flat single-segment slug for /{locale}/locations/{slug}.
+ * Supports canonical primary slugs, localized repo slugs for hierarchy locations,
+ * and known legacy aliases that should redirect to the canonical path.
+ */
+export function resolveLocationFromSingleSegmentSlug(
+  localeCandidate: string | undefined | null,
+  slugCandidate: string | undefined | null
+): LocationSeoResolved | null {
+  if (!slugCandidate || typeof slugCandidate !== "string") return null;
+
+  const locale = normalizeLocale(localeCandidate);
+  const primaryLocation = getLocationBySeoSlug(locale, slugCandidate);
+  if (primaryLocation) return primaryLocation;
+
+  const localizedLocation = getLocationByLocaleAndSlug(locale, slugCandidate);
+  if (localizedLocation) return localizedLocation;
+
+  const legacyLocationId = LEGACY_SINGLE_SEGMENT_LOCATION_SLUGS[locale]?.[slugCandidate];
+  if (!legacyLocationId) return null;
+
+  return getLocationById(locale, legacyLocationId);
+}
+
 /** Hreflang/canonical alternates for a location id. Built from getLocationPathFromLocation (SEO_LOCATIONS). */
 export function getLocationAlternates(locationId: LocationId): LocationAlternateMap {
   const alternates: LocationAlternateMap = {};
@@ -350,20 +442,12 @@ export function getHubLocationGroupsForNav(
   localeCandidate: string | undefined | null
 ): NavLocationGroup[] {
   const locale = normalizeLocale(localeCandidate);
-  return MAIN_NAV_REGION_IDS.map((id) => {
+  return HUB_NAV_LOCATION_IDS.map((id) => {
     const loc = getLocationById(locale, id);
     if (!loc) return null;
     const href = getLocationPathFromLocation(locale, loc);
     const label = loc.shortName;
-    const children =
-      id === LOCATION_IDS.HALKIDIKI && loc.childIds?.length
-        ? getChildLocations(loc).map((child) => ({
-            href: getLocationPathFromLocation(locale, child),
-            label: child.shortName,
-          }))
-        : undefined;
-    const group: NavLocationGroup = children ? { href, label, children } : { href, label };
-    return group;
+    return { href, label };
   }).filter((g): g is NavLocationGroup => g != null);
 }
 
@@ -383,7 +467,7 @@ export function getLocationByLocaleAndSlug(
 ): LocationSeoResolved | null {
   if (!slugCandidate) return null;
   const locale = normalizeLocale(localeCandidate);
-  const repoItem = locationSeoRepo.find((item) => item.slugByLocale[locale] === slugCandidate);
+  const repoItem = findLocationRepoItemByLocalizedSlug(locale, slugCandidate);
   if (!repoItem) return null;
   return buildLocationSeoRecord(locale, repoItem);
 }
@@ -413,10 +497,8 @@ export function getLocationByAnySlug(
 ): LocationSeoResolved | null {
   if (!slugCandidate) return null;
   const locale = normalizeLocale(localeCandidate);
-  const repoItem = locationSeoRepo.find(
-    (item) =>
-      item.canonicalSlug === slugCandidate ||
-      Object.values(item.slugByLocale).includes(slugCandidate)
+  const repoItem = locationSeoRepo.find((item) =>
+    matchesAnyKnownLocationSlug(item, slugCandidate)
   );
   if (!repoItem) return null;
   return buildLocationSeoRecord(locale, repoItem);
@@ -523,7 +605,7 @@ export function getLocationByPath(
   // Second try: 3-segment path with last segment = slugByLocale (e.g. car-rental-nikiti)
   if (pathSegments.length === 3) {
     const [region, area, lastSegment] = pathSegments;
-    const repoItem = locationSeoRepo.find((item) => item.slugByLocale[locale] === lastSegment);
+    const repoItem = findLocationRepoItemByLocalizedSlug(locale, lastSegment);
     if (repoItem) {
       const segs = getLocationPathSegments(repoItem.id);
       if (segs && segs[0] === region && segs[1] === area) {
@@ -534,7 +616,7 @@ export function getLocationByPath(
   // Third try: 2-segment path with last segment = slug (e.g. halkidiki/car-rental-nea-moudania)
   if (pathSegments.length === 2) {
     const [region, lastSegment] = pathSegments;
-    const repoItem = locationSeoRepo.find((item) => item.slugByLocale[locale] === lastSegment);
+    const repoItem = findLocationRepoItemByLocalizedSlug(locale, lastSegment);
     if (repoItem) {
       const segs = getLocationPathSegments(repoItem.id);
       if (segs && segs.length === 2 && segs[0] === region) {
@@ -664,10 +746,8 @@ export function switchPathLocale(
   // /{locale}/locations/{slug} → single-segment, resolve slug to next locale
   if (segments.length === 2 && segments[0] === LOCATION_ROUTE_SEGMENT) {
     const currentSlug = segments[1];
-    const repoItem = locationSeoRepo.find(
-      (item) =>
-        item.canonicalSlug === currentSlug ||
-        Object.values(item.slugByLocale).includes(currentSlug)
+    const repoItem = locationSeoRepo.find((item) =>
+      matchesAnyKnownLocationSlug(item, currentSlug)
     );
     if (repoItem) {
       const nextSlug = repoItem.slugByLocale[nextLocale];
@@ -679,7 +759,7 @@ export function switchPathLocale(
   if (segments.length === 4 && segments[0] === LOCATION_ROUTE_SEGMENT) {
     const [, region, area, lastSegment] = segments;
     const repoItem = locationSeoRepo.find((item) =>
-      Object.values(item.slugByLocale).includes(lastSegment)
+      matchesAnyKnownLocationSlug(item, lastSegment)
     );
     if (repoItem) {
       const segs = getLocationPathSegments(repoItem.id);
@@ -694,7 +774,7 @@ export function switchPathLocale(
   if (segments.length === 3 && segments[0] === LOCATION_ROUTE_SEGMENT) {
     const [, region, lastSegment] = segments;
     const repoItem = locationSeoRepo.find((item) =>
-      Object.values(item.slugByLocale).includes(lastSegment)
+      matchesAnyKnownLocationSlug(item, lastSegment)
     );
     if (repoItem) {
       const segs = getLocationPathSegments(repoItem.id);
@@ -814,6 +894,27 @@ export function getLocationSearchCtaLabel(
   const locale = normalizeLocale(localeCandidate);
   const template = localeSeoDictionary[locale].links.locationSearchCtaLabel;
   return fillTemplate(template, { locationName: locationShortName });
+}
+
+export function getLocationHeroSubtitle(
+  localeCandidate: string | undefined | null,
+  location: Pick<LocationSeoResolved, "id" | "shortName">
+): string | null {
+  const locale = normalizeLocale(localeCandidate);
+
+  if (!shouldApplyLocationBookingCopyToId(location.id)) {
+    return null;
+  }
+
+  return getLocationHeroSubtitleSentence(locale, location.shortName);
+}
+
+export function shouldHideDistanceToThessalonikiBlock(
+  locationId: string | null | undefined
+): boolean {
+  return locationId
+    ? DISTANCE_TO_THESSALONIKI_HIDDEN_LOCATION_IDS.has(locationId as LocationId)
+    : false;
 }
 
 export function isLocalePrefixedPath(pathname: string): boolean {

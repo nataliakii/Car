@@ -1,70 +1,31 @@
-﻿# GENERATED PAGE INVENTORY EXCLUDING CARS
-# Generated at: 2026-03-15T23:50:27.3548448+02:00
-# Total concrete pages excluding car-related pages: 267
-# Public localized non-car pages: 256
-# Admin/system non-car pages: 5
-# Legacy concrete redirects: 6
-# Dynamic non-car template routes (not counted above): 1
+# GENERATED PAGE INVENTORY EXCLUDING CARS AND POLICY PAGES
+# Filtered from: docs/ALL_PAGE_URLS.txt
+# Total concrete pages: 231
 
-# PUBLIC LOCALIZED STATIC PAGES
 https://natali-cars.com/bg
 https://natali-cars.com/bg/contacts
-https://natali-cars.com/bg/cookie-policy
 https://natali-cars.com/bg/locations
-https://natali-cars.com/bg/privacy-policy
-https://natali-cars.com/bg/rental-terms
-https://natali-cars.com/bg/terms-of-service
 https://natali-cars.com/de
 https://natali-cars.com/de/contacts
-https://natali-cars.com/de/cookie-policy
 https://natali-cars.com/de/locations
-https://natali-cars.com/de/privacy-policy
-https://natali-cars.com/de/rental-terms
-https://natali-cars.com/de/terms-of-service
 https://natali-cars.com/el
 https://natali-cars.com/el/contacts
-https://natali-cars.com/el/cookie-policy
 https://natali-cars.com/el/locations
-https://natali-cars.com/el/privacy-policy
-https://natali-cars.com/el/rental-terms
-https://natali-cars.com/el/terms-of-service
 https://natali-cars.com/en
 https://natali-cars.com/en/contacts
-https://natali-cars.com/en/cookie-policy
 https://natali-cars.com/en/locations
-https://natali-cars.com/en/privacy-policy
-https://natali-cars.com/en/rental-terms
-https://natali-cars.com/en/terms-of-service
 https://natali-cars.com/ro
 https://natali-cars.com/ro/contacts
-https://natali-cars.com/ro/cookie-policy
 https://natali-cars.com/ro/locations
-https://natali-cars.com/ro/privacy-policy
-https://natali-cars.com/ro/rental-terms
-https://natali-cars.com/ro/terms-of-service
 https://natali-cars.com/ru
 https://natali-cars.com/ru/contacts
-https://natali-cars.com/ru/cookie-policy
 https://natali-cars.com/ru/locations
-https://natali-cars.com/ru/privacy-policy
-https://natali-cars.com/ru/rental-terms
-https://natali-cars.com/ru/terms-of-service
 https://natali-cars.com/sr
 https://natali-cars.com/sr/contacts
-https://natali-cars.com/sr/cookie-policy
 https://natali-cars.com/sr/locations
-https://natali-cars.com/sr/privacy-policy
-https://natali-cars.com/sr/rental-terms
-https://natali-cars.com/sr/terms-of-service
 https://natali-cars.com/uk
 https://natali-cars.com/uk/contacts
-https://natali-cars.com/uk/cookie-policy
 https://natali-cars.com/uk/locations
-https://natali-cars.com/uk/privacy-policy
-https://natali-cars.com/uk/rental-terms
-https://natali-cars.com/uk/terms-of-service
-
-# PUBLIC LOCALIZED LOCATION PAGES
 https://natali-cars.com/bg/locations/halkidiki/kassandra
 https://natali-cars.com/bg/locations/halkidiki/kassandra/koli-pod-naem-afitos
 https://natali-cars.com/bg/locations/halkidiki/kassandra/koli-pod-naem-fourka
@@ -265,21 +226,10 @@ https://natali-cars.com/uk/locations/orenda-avto-aeroport-saloniky
 https://natali-cars.com/uk/locations/orenda-avto-halkidiki
 https://natali-cars.com/uk/locations/orenda-avto-nea-kallikratia
 https://natali-cars.com/uk/locations/orenda-avto-saloniky
-
-# ADMIN/SYSTEM PAGES
 https://natali-cars.com/admin
 https://natali-cars.com/admin/orders
 https://natali-cars.com/admin/orders-calendar
 https://natali-cars.com/admin/table
 https://natali-cars.com/login
-
-# LEGACY CONCRETE REDIRECTS
 https://natali-cars.com/
 https://natali-cars.com/contacts
-https://natali-cars.com/cookie-policy
-https://natali-cars.com/privacy-policy
-https://natali-cars.com/rental-terms
-https://natali-cars.com/terms-of-service
-
-# DYNAMIC NON-CAR TEMPLATE ROUTES
-/{locale}/terms

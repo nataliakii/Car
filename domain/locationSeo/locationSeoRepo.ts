@@ -13,6 +13,10 @@ import type {
   LocationSeoFaqItem,
   LocationSeoRepoItem,
 } from "./types";
+import {
+  appendLocationBookingSentence,
+  shouldApplyLocationBookingCopyToContentKey,
+} from "./locationBookingCopy";
 
 type PartialLocaleRecord<T> = Partial<Record<SupportedLocale, T>>;
 
@@ -503,6 +507,44 @@ const localFaqTitleOverrides: Partial<Record<SupportedLocale, string>> = {
   sr: "Lokalna FAQ",
 };
 
+const distanceToThessalonikiTitleOverrides: Partial<Record<SupportedLocale, string>> = {
+  de: "Entfernung nach Thessaloniki",
+  ro: "Distanța până la Salonic",
+  sr: "Udaljenost do Soluna",
+};
+
+const distanceToThessalonikiTextOverridesByContentKey: Partial<
+  Record<LocationContentKey, Partial<Record<SupportedLocale, string>>>
+> = {
+  [LOCATION_CONTENT_KEYS.THESSALONIKI]: {
+    ru: "Салоники — второй по величине город Греции и главный центр Северной Греции.",
+    uk: "Салоніки — друге за величиною місто Греції та головний центр Північної Греції.",
+    el: "Η Θεσσαλονίκη είναι η δεύτερη μεγαλύτερη πόλη της Ελλάδας και το κύριο κέντρο της Βόρειας Ελλάδας.",
+    de: "Thessaloniki ist die zweitgrößte Stadt Griechenlands und das wichtigste Zentrum Nordgriechenlands.",
+    bg: "Солун е вторият по големина град в Гърция и основният център на Северна Гърция.",
+    ro: "Salonic este al doilea oraș ca mărime din Grecia și principalul centru al Greciei de Nord.",
+    sr: "Solun je drugi najveći grad u Grčkoj i glavni centar severne Grčke.",
+  },
+  [LOCATION_CONTENT_KEYS.THESSALONIKI_AIRPORT]: {
+    ru: "Аэропорт Салоники (SKG) — главный международный аэропорт, обслуживающий Салоники и весь регион.",
+    uk: "Аеропорт Салоніки (SKG) — головний міжнародний аеропорт, що обслуговує Салоніки та весь регіон.",
+    el: "Το αεροδρόμιο Θεσσαλονίκης (SKG) είναι το κύριο διεθνές αεροδρόμιο που εξυπηρετεί τη Θεσσαλονίκη και την ευρύτερη περιοχή.",
+    de: "Der Flughafen Thessaloniki (SKG) ist der wichtigste internationale Flughafen für Thessaloniki und die weitere Region.",
+    bg: "Летище Солун (SKG) е основното международно летище, което обслужва Солун и по-широкия регион.",
+    ro: "Aeroportul Salonic (SKG) este principalul aeroport internațional care deservește Salonicul și întreaga regiune.",
+    sr: "Aerodrom Solun (SKG) je glavni međunarodni aerodrom koji opslužuje Solun i širi region.",
+  },
+  [LOCATION_CONTENT_KEYS.HALKIDIKI]: {
+    ru: "Халкидики находятся примерно в 110 км от Салоник и примерно в 90 км от аэропорта Салоники (SKG).",
+    uk: "Халкідіки розташовані приблизно за 110 км від Салонік і приблизно за 90 км від аеропорту Салоніки (SKG).",
+    el: "Η Χαλκιδική βρίσκεται περίπου 110 χλμ. από τη Θεσσαλονίκη και περίπου 90 χλμ. από το αεροδρόμιο Θεσσαλονίκης (SKG).",
+    de: "Chalkidiki liegt etwa 110 km von Thessaloniki und rund 90 km vom Flughafen Thessaloniki (SKG) entfernt.",
+    bg: "Халкидики се намира на около 110 км от Солун и на около 90 км от летище Солун (SKG).",
+    ro: "Halkidiki se află la aproximativ 110 km de Salonic și la aproximativ 90 km de Aeroportul Salonic (SKG).",
+    sr: "Halkidiki se nalazi na oko 110 km od Soluna i na oko 90 km od aerodroma Solun (SKG).",
+  },
+};
+
 const localeSeoDictionaryExpanded = expandLocaleRecord(localeSeoDictionaryRaw);
 
 // Patch fallback-only locales with translated hero CTA labels.
@@ -511,13 +553,18 @@ const localeSeoDictionaryExpanded = expandLocaleRecord(localeSeoDictionaryRaw);
 for (const locale of SUPPORTED_LOCALES) {
   const label = locationHeroCtaLabelOverrides[locale];
   const localFaqTitle = localFaqTitleOverrides[locale];
-  if (label || localFaqTitle) {
+  const distanceToThessalonikiTitle =
+    distanceToThessalonikiTitleOverrides[locale];
+  if (label || localFaqTitle || distanceToThessalonikiTitle) {
     localeSeoDictionaryExpanded[locale] = {
       ...localeSeoDictionaryExpanded[locale],
       links: {
         ...localeSeoDictionaryExpanded[locale].links,
         ...(label ? { locationHeroCtaLabel: label } : {}),
         ...(localFaqTitle ? { localFaqTitle } : {}),
+        ...(distanceToThessalonikiTitle
+          ? { distanceToThessalonikiTitle }
+          : {}),
       },
     };
   }
@@ -557,6 +604,445 @@ const locationContentFallbackTemplates: Partial<
       "\u0412\u044B\u0434\u0430\u0447\u0430 \u0443 \u043E\u0442\u0435\u043B\u044F \u0438\u043B\u0438 \u0432 \u0433\u043E\u0440\u043E\u0434\u0435 \u0434\u043B\u044F \u043F\u043E\u0435\u0437\u0434\u043E\u043A \u043F\u043E {locationName} \u0438 \u043E\u043A\u0440\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u044F\u043C.",
     pickupGuidance:
       "\u041F\u0435\u0440\u0435\u0434\u0430\u0447\u0443 \u0430\u0432\u0442\u043E \u0432 {locationName} \u043C\u043E\u0436\u043D\u043E \u043E\u0440\u0433\u0430\u043D\u0438\u0437\u043E\u0432\u0430\u0442\u044C \u0443 \u043C\u0435\u0441\u0442\u0430 \u043F\u0440\u043E\u0436\u0438\u0432\u0430\u043D\u0438\u044F \u0438\u043B\u0438 \u0432 \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\u043D\u043D\u043E\u0439 \u0442\u043E\u0447\u043A\u0435. \u0423\u043A\u0430\u0436\u0438\u0442\u0435 \u0430\u0434\u0440\u0435\u0441 \u043F\u0440\u0438 \u0431\u0440\u043E\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0438.",
+  },
+  uk: {
+    h1: "Оренда авто у {locationName}",
+    seoTitle: "Оренда авто у {locationName} | Natali Cars",
+    seoDescription:
+      "Орендуйте авто у {locationName} зі зручною видачею та прямою підтримкою від Natali Cars.",
+    introText:
+      "Сторінка {locationName} допомагає організувати оренду авто з отриманням біля місця проживання або у місті.",
+    pickupLocation: "Точка отримання у {locationName}",
+    offerName: "Оренда авто у {locationName}",
+    offerDescription:
+      "Отримання біля готелю або у місті для поїздок по {locationName} та околицях.",
+    pickupGuidance:
+      "Передачу авто у {locationName} можна організувати біля місця проживання або в узгодженій точці. Вкажіть адресу під час бронювання.",
+  },
+  el: {
+    h1: "Ενοικίαση αυτοκινήτου στο {locationName}",
+    seoTitle: "Ενοικίαση αυτοκινήτου στο {locationName} | Natali Cars",
+    seoDescription:
+      "Νοικιάστε αυτοκίνητο στο {locationName} με εύκολη παραλαβή και άμεση υποστήριξη από τη Natali Cars.",
+    introText:
+      "Η σελίδα του {locationName} σας βοηθά να οργανώσετε ενοικίαση αυτοκινήτου με παραλαβή στο κατάλυμα ή μέσα στην περιοχή.",
+    pickupLocation: "Σημείο παραλαβής στο {locationName}",
+    offerName: "Ενοικίαση αυτοκινήτου στο {locationName}",
+    offerDescription:
+      "Παραλαβή σε ξενοδοχείο ή μέσα στην περιοχή για διαδρομές στο {locationName} και γύρω μέρη.",
+    pickupGuidance:
+      "Η παράδοση αυτοκινήτου στο {locationName} μπορεί να οργανωθεί στο κατάλυμά σας ή σε συμφωνημένο σημείο. Δηλώστε τη διεύθυνση κατά την κράτηση.",
+  },
+  de: {
+    h1: "Mietwagen in {locationName}",
+    seoTitle: "Mietwagen in {locationName} | Natali Cars",
+    seoDescription:
+      "Mieten Sie ein Auto in {locationName} mit bequemer Uebergabe und direktem Support von Natali Cars.",
+    introText:
+      "Die Seite fuer {locationName} hilft Ihnen, einen Mietwagen mit Uebergabe an Ihrer Unterkunft oder im Ort zu organisieren.",
+    pickupLocation: "Abholpunkt in {locationName}",
+    offerName: "Mietwagen in {locationName}",
+    offerDescription:
+      "Uebergabe am Hotel oder im Ort fuer Fahrten in {locationName} und Umgebung.",
+    pickupGuidance:
+      "Die Fahrzeuguebergabe in {locationName} kann an Ihrer Unterkunft oder an einem vereinbarten Treffpunkt erfolgen. Geben Sie Ihre Adresse bei der Buchung an.",
+  },
+  bg: {
+    h1: "Коли под наем в {locationName}",
+    seoTitle: "Коли под наем в {locationName} | Natali Cars",
+    seoDescription:
+      "Наемете автомобил в {locationName} с удобно получаване и директна поддръжка от Natali Cars.",
+    introText:
+      "Страницата за {locationName} ви помага да организирате кола под наем с получаване до мястото за настаняване или в населеното място.",
+    pickupLocation: "Точка за получаване в {locationName}",
+    offerName: "Коли под наем в {locationName}",
+    offerDescription:
+      "Получаване до хотел или в населеното място за пътувания из {locationName} и околностите.",
+    pickupGuidance:
+      "Предаването на автомобила в {locationName} може да бъде организирано до мястото за настаняване или на уговорена точка. Посочете адреса при резервация.",
+  },
+  ro: {
+    h1: "Inchirieri auto in {locationName}",
+    seoTitle: "Inchirieri auto in {locationName} | Natali Cars",
+    seoDescription:
+      "Inchiriati o masina in {locationName} cu predare convenabila si suport direct de la Natali Cars.",
+    introText:
+      "Pagina pentru {locationName} va ajuta sa organizati inchirierea unei masini cu predare la cazare sau in localitate.",
+    pickupLocation: "Punct de preluare in {locationName}",
+    offerName: "Inchirieri auto in {locationName}",
+    offerDescription:
+      "Predare la hotel sau in localitate pentru drumuri prin {locationName} si imprejurimi.",
+    pickupGuidance:
+      "Predarea masinii in {locationName} poate fi organizata la cazarea dvs. sau intr-un punct convenit. Indicati adresa la rezervare.",
+  },
+  sr: {
+    h1: "Rent a car u {locationName}",
+    seoTitle: "Rent a car u {locationName} | Natali Cars",
+    seoDescription:
+      "Iznajmite automobil u {locationName} uz lako preuzimanje i direktnu podrsku kompanije Natali Cars.",
+    introText:
+      "Stranica za {locationName} pomaze da organizujete rent a car sa preuzimanjem kod smestaja ili u mestu.",
+    pickupLocation: "Mesto preuzimanja u {locationName}",
+    offerName: "Rent a car u {locationName}",
+    offerDescription:
+      "Preuzimanje kod hotela ili u mestu za voznju kroz {locationName} i okolinu.",
+    pickupGuidance:
+      "Preuzimanje automobila u {locationName} moze se organizovati kod smestaja ili na dogovorenom mestu. Unesite adresu pri rezervaciji.",
+  },
+};
+
+const locationIntroTranslationTemplates: Partial<
+  Record<SupportedLocale, Partial<Record<LocationContentKey, string>>>
+> = {
+  ru: {
+    [LOCATION_CONTENT_KEYS.THESSALONIKI]:
+      "Эта страница локации ориентирована на спрос в Thessaloniki и помогает быстро организовать выдачу автомобиля для поездок по городу, деловых визитов и трансферов в Halkidiki.",
+    [LOCATION_CONTENT_KEYS.HALKIDIKI]:
+      "Халкидики — один из самых популярных курортных регионов Греции, где аренда авто особенно удобна для поездок между пляжами, поселками и полуостровами Кассандра и Ситония. Natali Cars поможет быстро организовать прокат авто в Халкидиках для комфортного отдыха и удобного передвижения по региону.",
+    [LOCATION_CONTENT_KEYS.NEA_KALLIKRATIA]:
+      "Неа Калликратия — популярный прибрежный город на пути в Халкидики.",
+    [LOCATION_CONTENT_KEYS.SITHONIA]:
+      "Эта страница субрегиона ориентирована на поездки по восточному побережью Halkidiki, отдых на виллах и гибкую выдачу автомобиля для длительных каникул в {locationName}.",
+    [LOCATION_CONTENT_KEYS.KASSANDRA]:
+      "Эта страница {locationName} создана для туристов, ориентированных на курортный отдых, и связана с основным разделом Halkidiki для удобного планирования поездки.",
+    [LOCATION_CONTENT_KEYS.NEA_MOUDANIA]:
+      "{locationName} — главный порт и въезд в Halkidiki. Организуйте аренду авто с выдачей в городе или рядом с портом для удобного начала поездки.",
+    [LOCATION_CONTENT_KEYS.NIKITI]:
+      "{locationName} — один из главных городков Sithonia. Эта страница помогает подобрать аренду авто с выдачей, удобной для вашего отдыха в {locationName} или рядом.",
+    [LOCATION_CONTENT_KEYS.NEOS_MARMARAS]:
+      "{locationName} — оживлённый курортный город на Sithonia с гаванью и большим выбором жилья. Организуйте аренду с выдачей, которая подходит под ваши планы.",
+    [LOCATION_CONTENT_KEYS.SARTI]:
+      "{locationName} известен длинным пляжем и расслабленной атмосферой. Эта страница помогает забронировать аренду авто с выдачей в {locationName} или у места проживания.",
+    [LOCATION_CONTENT_KEYS.KALLITHEA]:
+      "{locationName} — популярный курорт на Kassandra с оживлённой главной улицей и хорошими пляжами.",
+    [LOCATION_CONTENT_KEYS.PEFKOHORI]:
+      "{locationName} предлагает длинный пляж и оживлённую центральную улицу. Эта страница помогает организовать аренду авто с удобной выдачей на время вашего отдыха.",
+    [LOCATION_CONTENT_KEYS.HANIOTI]:
+      "{locationName} — оживлённый курорт с длинным пляжем и развитой инфраструктурой. Организуйте аренду с выдачей, подходящей под ваше проживание.",
+    [LOCATION_CONTENT_KEYS.POLICHRONO]:
+      "{locationName} — семейный курорт с длинным пляжем. Эта страница помогает подобрать аренду авто с выдачей, удобной для вашего отдыха.",
+    [LOCATION_CONTENT_KEYS.AFITOS]:
+      "{locationName} — живописная деревня на Kassandra с каменными домами и видом со скалы.",
+    [LOCATION_CONTENT_KEYS.KRIOPIGI]:
+      "{locationName} расположен между более оживлёнными курортами и подходит для спокойного отдыха. Эта страница помогает забронировать аренду авто с выдачей в {locationName} или рядом.",
+    [LOCATION_CONTENT_KEYS.SANI]:
+      "{locationName} известен премиальным курортом и мариной. Организуйте аренду авто с выдачей в {locationName} или у места проживания для поездок по Kassandra.",
+    [LOCATION_CONTENT_KEYS.KASSANDRIA]:
+      "{locationName} — главный город в центральной части полуострова Kassandra.",
+    [LOCATION_CONTENT_KEYS.FOURKA]:
+      "{locationName} — небольшой курорт на западном побережье. Организуйте аренду с выдачей в {locationName} или у места проживания для спокойного отдыха.",
+    [LOCATION_CONTENT_KEYS.METAMORFOSI]:
+      "{locationName} — небольшая деревня на Sithonia с расслабленной атмосферой. Эта страница помогает забронировать аренду авто с выдачей в {locationName} или рядом.",
+    [LOCATION_CONTENT_KEYS.AGIOS_NIKOLAOS_HALKIDIKI]:
+      "{locationName} — живописная деревня на восточном побережье Sithonia. Организуйте аренду с выдачей, подходящей под ваше проживание и планы.",
+    [LOCATION_CONTENT_KEYS.ORMILIA]:
+      "{locationName} находится по пути в Halkidiki из Thessaloniki. Эта страница помогает организовать аренду авто с выдачей в {locationName} или у места проживания.",
+    [LOCATION_CONTENT_KEYS.PETRALONA]:
+      "{locationName} известна пещерой Петралона и расположена в глубине материка недалеко от побережья. Организуйте аренду с выдачей в {locationName} или рядом для гибкой поездки.",
+    [LOCATION_CONTENT_KEYS.VRASNA]:
+      "{locationName} — прибрежная деревня в восточной части Halkidiki. Эта страница помогает организовать аренду с выдачей в {locationName} или у места проживания.",
+    [LOCATION_CONTENT_KEYS.OLYMPIADA]:
+      "{locationName} — прибрежная деревня рядом с древней Стагирой. Организуйте аренду с выдачей в {locationName} или у места проживания для поездок к историческим местам и на пляжи.",
+  },
+  uk: {
+    [LOCATION_CONTENT_KEYS.THESSALONIKI]:
+      "Ця сторінка локації орієнтована на попит у Thessaloniki та допомагає швидко організувати видачу авто для міських поїздок, ділових візитів і трансферів до Halkidiki.",
+    [LOCATION_CONTENT_KEYS.HALKIDIKI]:
+      "Халкідіки — один із найпопулярніших курортних регіонів Греції, де оренда авто особливо зручна для поїздок між пляжами, селищами та півостровами Кассандра і Ситонія. Natali Cars допоможе швидко організувати прокат авто в Халкідіках для комфортного відпочинку та зручного пересування регіоном.",
+    [LOCATION_CONTENT_KEYS.NEA_KALLIKRATIA]:
+      "Неа Каллікратія — популярне прибережне місто на шляху в Халкідіки.",
+    [LOCATION_CONTENT_KEYS.SITHONIA]:
+      "Ця сторінка субрегіону орієнтована на поїздки східним узбережжям Halkidiki, відпочинок на віллах і гнучку видачу авто для тривалих канікул у {locationName}.",
+    [LOCATION_CONTENT_KEYS.KASSANDRA]:
+      "Ця сторінка {locationName} створена для курортно орієнтованих подорожей і пов'язана з основним розділом Halkidiki для зручного планування поїздки.",
+    [LOCATION_CONTENT_KEYS.NEA_MOUDANIA]:
+      "{locationName} — головний порт і в'їзд до Halkidiki. Організуйте оренду авто з видачею в місті або біля порту для зручного початку подорожі.",
+    [LOCATION_CONTENT_KEYS.NIKITI]:
+      "{locationName} — одне з головних містечок Sithonia. Ця сторінка допомагає підібрати оренду авто з видачею, зручною для вашого відпочинку в {locationName} або поруч.",
+    [LOCATION_CONTENT_KEYS.NEOS_MARMARAS]:
+      "{locationName} — жвавий курортний центр на Sithonia з гаванню та великим вибором житла. Організуйте оренду з видачею, що підходить під ваші плани.",
+    [LOCATION_CONTENT_KEYS.SARTI]:
+      "{locationName} відомий довгим пляжем і спокійною атмосферою. Ця сторінка допомагає забронювати оренду авто з видачею у {locationName} або біля місця проживання.",
+    [LOCATION_CONTENT_KEYS.KALLITHEA]:
+      "{locationName} — популярний курорт на Kassandra з жвавою головною вулицею та гарними пляжами.",
+    [LOCATION_CONTENT_KEYS.PEFKOHORI]:
+      "{locationName} пропонує довгий пляж і жваву центральну вулицю. Ця сторінка допомагає організувати оренду авто зі зручною видачею на час вашого відпочинку.",
+    [LOCATION_CONTENT_KEYS.HANIOTI]:
+      "{locationName} — жвавий курорт із довгим пляжем і розвиненою інфраструктурою. Організуйте оренду з видачею, що підходить під ваше проживання.",
+    [LOCATION_CONTENT_KEYS.POLICHRONO]:
+      "{locationName} — сімейний курорт із довгим пляжем. Ця сторінка допомагає підібрати оренду авто з видачею, зручною для вашого відпочинку.",
+    [LOCATION_CONTENT_KEYS.AFITOS]:
+      "{locationName} — мальовниче селище на Kassandra з кам'яними будинками та розташуванням на скелі.",
+    [LOCATION_CONTENT_KEYS.KRIOPIGI]:
+      "{locationName} розташований між жвавішими курортами й підходить для спокійнішого відпочинку. Ця сторінка допомагає забронювати оренду авто з видачею у {locationName} або поруч.",
+    [LOCATION_CONTENT_KEYS.SANI]:
+      "{locationName} відомий преміальним курортом і мариною. Організуйте оренду авто з видачею у {locationName} або біля місця проживання для поїздок Kassandra.",
+    [LOCATION_CONTENT_KEYS.KASSANDRIA]:
+      "{locationName} — головне місто в центральній частині півострова Kassandra.",
+    [LOCATION_CONTENT_KEYS.FOURKA]:
+      "{locationName} — невеликий курорт на західному узбережжі. Організуйте оренду з видачею у {locationName} або біля місця проживання для спокійного відпочинку.",
+    [LOCATION_CONTENT_KEYS.METAMORFOSI]:
+      "{locationName} — невелике селище на Sithonia зі спокійною атмосферою. Ця сторінка допомагає забронювати оренду авто з видачею у {locationName} або поруч.",
+    [LOCATION_CONTENT_KEYS.AGIOS_NIKOLAOS_HALKIDIKI]:
+      "{locationName} — мальовниче селище на східному узбережжі Sithonia. Організуйте оренду з видачею, що підходить під ваше проживання та плани.",
+    [LOCATION_CONTENT_KEYS.ORMILIA]:
+      "{locationName} розташована по дорозі до Halkidiki з Thessaloniki. Ця сторінка допомагає організувати оренду авто з видачею у {locationName} або біля місця проживання.",
+    [LOCATION_CONTENT_KEYS.PETRALONA]:
+      "{locationName} відома печерою Петралона й розташована вглибині суходолу неподалік узбережжя. Організуйте оренду з видачею у {locationName} або поруч для гнучкої подорожі.",
+    [LOCATION_CONTENT_KEYS.VRASNA]:
+      "{locationName} — прибережне селище у східній частині Halkidiki. Ця сторінка допомагає організувати оренду з видачею у {locationName} або біля місця проживання.",
+    [LOCATION_CONTENT_KEYS.OLYMPIADA]:
+      "{locationName} — прибережне селище поруч із давньою Стагірою. Організуйте оренду з видачею у {locationName} або біля місця проживання для поїздок до історичних місць і на пляжі.",
+  },
+  el: {
+    [LOCATION_CONTENT_KEYS.THESSALONIKI]:
+      "Αυτή η σελίδα τοποθεσίας απευθύνεται στη ζήτηση για Thessaloniki και συνδέει τους ταξιδιώτες με γρήγορη παραλαβή αυτοκινήτου για διαμονή στην πόλη, επαγγελματικά ταξίδια και μεταφορές προς Halkidiki.",
+    [LOCATION_CONTENT_KEYS.HALKIDIKI]:
+      "Η Χαλκιδική είναι μία από τις πιο δημοφιλείς τουριστικές περιοχές της Ελλάδας, όπου η ενοικίαση αυτοκινήτου είναι ιδιαίτερα βολική για διαδρομές ανάμεσα σε παραλίες, οικισμούς και τις χερσονήσους Κασσάνδρα και Σιθωνία. Η Natali Cars σας βοηθά να οργανώσετε γρήγορα ενοικίαση αυτοκινήτου στη Χαλκιδική για άνετες διακοπές και εύκολες μετακινήσεις σε όλη την περιοχή.",
+    [LOCATION_CONTENT_KEYS.NEA_KALLIKRATIA]:
+      "Η Νέα Καλλικράτεια είναι δημοφιλής παραθαλάσσια πόλη στο δρόμο προς τη Χαλκιδική.",
+    [LOCATION_CONTENT_KEYS.SITHONIA]:
+      "Αυτή η σελίδα υποπεριοχής απευθύνεται σε ταξίδια στην ανατολική ακτή της Halkidiki, σε διαμονές σε βίλες και σε ευέλικτη παραλαβή αυτοκινήτου για μεγαλύτερες διακοπές στη {locationName}.",
+    [LOCATION_CONTENT_KEYS.KASSANDRA]:
+      "Αυτή η σελίδα για τη {locationName} έχει σχεδιαστεί για ταξίδια με προσανατολισμό στα θέρετρα και συνδέεται με τον βασικό κόμβο της Halkidiki για ευκολότερο προγραμματισμό.",
+    [LOCATION_CONTENT_KEYS.NEA_MOUDANIA]:
+      "Η {locationName} είναι το κύριο λιμάνι και η πύλη προς τη Halkidiki. Οργανώστε ενοικίαση αυτοκινήτου με παραλαβή στην πόλη ή κοντά στο λιμάνι για ομαλή αρχή του ταξιδιού σας.",
+    [LOCATION_CONTENT_KEYS.NIKITI]:
+      "Η {locationName} είναι μία από τις βασικές κωμοπόλεις της Sithonia. Αυτή η σελίδα σας βοηθά να βρείτε ενοικίαση αυτοκινήτου με παραλαβή προσαρμοσμένη στη διαμονή σας στη {locationName} ή κοντά.",
+    [LOCATION_CONTENT_KEYS.NEOS_MARMARAS]:
+      "Η {locationName} είναι ένα ζωντανό θέρετρο στη Sithonia με λιμάνι και πολλές επιλογές διαμονής. Οργανώστε ενοικίαση με παραλαβή που ταιριάζει στα σχέδιά σας.",
+    [LOCATION_CONTENT_KEYS.SARTI]:
+      "Η {locationName} είναι γνωστή για τη μεγάλη παραλία και τη χαλαρή ατμόσφαιρά της. Αυτή η σελίδα σας βοηθά να κλείσετε ενοικίαση αυτοκινήτου με παραλαβή στη {locationName} ή στο κατάλυμά σας.",
+    [LOCATION_CONTENT_KEYS.KALLITHEA]:
+      "Η {locationName} είναι ένα δημοφιλές θέρετρο στην Kassandra με ζωντανό κέντρο και όμορφες παραλίες.",
+    [LOCATION_CONTENT_KEYS.PEFKOHORI]:
+      "Η {locationName} προσφέρει μεγάλη παραλία και πολυσύχναστο κεντρικό δρόμο. Αυτή η σελίδα σας βοηθά να οργανώσετε ενοικίαση αυτοκινήτου με άνετη παραλαβή για τη διαμονή σας.",
+    [LOCATION_CONTENT_KEYS.HANIOTI]:
+      "Η {locationName} είναι ένα ζωντανό θέρετρο με μεγάλη παραλία και πολλές παροχές. Οργανώστε ενοικίαση με παραλαβή που ταιριάζει στο κατάλυμά σας.",
+    [LOCATION_CONTENT_KEYS.POLICHRONO]:
+      "Η {locationName} είναι ένα οικογενειακό θέρετρο με μεγάλη παραλία. Αυτή η σελίδα σας συνδέει με ενοικίαση αυτοκινήτου και παραλαβή προσαρμοσμένη στη διαμονή σας.",
+    [LOCATION_CONTENT_KEYS.AFITOS]:
+      "Η {locationName} είναι ένα γραφικό χωριό στην Kassandra με πέτρινα σπίτια και θέση πάνω στον γκρεμό.",
+    [LOCATION_CONTENT_KEYS.KRIOPIGI]:
+      "Η {locationName} βρίσκεται ανάμεσα στα πιο πολυσύχναστα θέρετρα και προσφέρει πιο ήρεμη βάση. Αυτή η σελίδα σας βοηθά να κλείσετε ενοικίαση αυτοκινήτου με παραλαβή στη {locationName} ή κοντά.",
+    [LOCATION_CONTENT_KEYS.SANI]:
+      "Η {locationName} είναι γνωστή για το πολυτελές θέρετρο και τη μαρίνα της. Οργανώστε ενοικίαση αυτοκινήτου με παραλαβή στη {locationName} ή στο κατάλυμά σας για διαδρομές στην Kassandra.",
+    [LOCATION_CONTENT_KEYS.KASSANDRIA]:
+      "Η {locationName} είναι η κύρια πόλη στο κέντρο της χερσονήσου Kassandra.",
+    [LOCATION_CONTENT_KEYS.FOURKA]:
+      "Η {locationName} είναι ένα μικρό θέρετρο στη δυτική ακτή. Οργανώστε ενοικίαση με παραλαβή στη {locationName} ή στο κατάλυμά σας για πιο χαλαρές διακοπές.",
+    [LOCATION_CONTENT_KEYS.METAMORFOSI]:
+      "Η {locationName} είναι ένα μικρό χωριό στη Sithonia με χαλαρή ατμόσφαιρα. Αυτή η σελίδα σας βοηθά να κλείσετε ενοικίαση αυτοκινήτου με παραλαβή στη {locationName} ή κοντά.",
+    [LOCATION_CONTENT_KEYS.AGIOS_NIKOLAOS_HALKIDIKI]:
+      "Η {locationName} είναι ένα γραφικό χωριό στην ανατολική ακτή της Sithonia. Οργανώστε ενοικίαση με παραλαβή που ταιριάζει στο κατάλυμα και στα σχέδιά σας.",
+    [LOCATION_CONTENT_KEYS.ORMILIA]:
+      "Η {locationName} βρίσκεται στον δρόμο προς τη Halkidiki από τη Thessaloniki. Αυτή η σελίδα σας βοηθά να οργανώσετε ενοικίαση αυτοκινήτου με παραλαβή στη {locationName} ή στο κατάλυμά σας.",
+    [LOCATION_CONTENT_KEYS.PETRALONA]:
+      "Η {locationName} είναι γνωστή για το Σπήλαιο Πετραλώνων και βρίσκεται στην ενδοχώρα, κοντά στην ακτή. Οργανώστε ενοικίαση με παραλαβή στη {locationName} ή κοντά για πιο ευέλικτο ταξίδι.",
+    [LOCATION_CONTENT_KEYS.VRASNA]:
+      "Η {locationName} είναι ένα παραθαλάσσιο χωριό στην ανατολική πλευρά της Halkidiki. Αυτή η σελίδα σας βοηθά να οργανώσετε ενοικίαση με παραλαβή στη {locationName} ή στο κατάλυμά σας.",
+    [LOCATION_CONTENT_KEYS.OLYMPIADA]:
+      "Η {locationName} είναι ένα παραθαλάσσιο χωριό κοντά στην αρχαία Στάγειρα. Οργανώστε ενοικίαση με παραλαβή στη {locationName} ή στο κατάλυμά σας για ιστορικές και παραλιακές διαδρομές.",
+  },
+  de: {
+    [LOCATION_CONTENT_KEYS.THESSALONIKI]:
+      "Diese Standortseite richtet sich an die Nachfrage in Thessaloniki und verbindet Reisende mit schneller Fahrzeuguebergabe fuer Stadtaufenthalte, Geschaeftsreisen und Transfers nach Halkidiki.",
+    [LOCATION_CONTENT_KEYS.HALKIDIKI]:
+      "Die Chalkidiki ist eine der beliebtesten Ferienregionen Griechenlands, in der ein Mietwagen besonders praktisch fuer Fahrten zwischen Straenden, Orten und den Halbinseln Kassandra und Sithonia ist. Natali Cars hilft Ihnen, die Autovermietung in Chalkidiki schnell fuer einen komfortablen Urlaub und bequeme Fahrten in der Region zu organisieren.",
+    [LOCATION_CONTENT_KEYS.NEA_KALLIKRATIA]:
+      "Nea Kallikratia ist ein beliebter Küstenort auf dem Weg in die Chalkidiki.",
+    [LOCATION_CONTENT_KEYS.SITHONIA]:
+      "Diese Unterregionsseite richtet sich an Reisen an der Ostkueste von Halkidiki, an Villa-Aufenthalte und an flexible Fahrzeuguebergabe fuer laengere Ferien in {locationName}.",
+    [LOCATION_CONTENT_KEYS.KASSANDRA]:
+      "Diese Seite fuer {locationName} ist auf resortorientierte Reisen ausgerichtet und mit dem uebergeordneten Halkidiki-Hub fuer die regionale Planung verbunden.",
+    [LOCATION_CONTENT_KEYS.NEA_MOUDANIA]:
+      "{locationName} ist der wichtigste Hafen und das Tor nach Halkidiki. Organisieren Sie Ihre Autovermietung mit Uebergabe in der Stadt oder in Hafennaehe fuer einen entspannten Start der Reise.",
+    [LOCATION_CONTENT_KEYS.NIKITI]:
+      "{locationName} ist einer der wichtigsten Orte auf Sithonia. Diese Seite hilft Ihnen, einen Mietwagen mit Uebergabe passend zu Ihrem Aufenthalt in {locationName} oder in der Umgebung zu buchen.",
+    [LOCATION_CONTENT_KEYS.NEOS_MARMARAS]:
+      "{locationName} ist ein lebhafter Ferienort auf Sithonia mit Hafen und vielen Unterkuenften. Organisieren Sie die Anmietung mit einer Uebergabe, die zu Ihren Plaenen passt.",
+    [LOCATION_CONTENT_KEYS.SARTI]:
+      "{locationName} ist fuer seinen langen Strand und die entspannte Atmosphaere bekannt. Diese Seite hilft Ihnen, einen Mietwagen mit Uebergabe in {locationName} oder an Ihrer Unterkunft zu buchen.",
+    [LOCATION_CONTENT_KEYS.KALLITHEA]:
+      "{locationName} ist ein beliebter Ferienort auf Kassandra mit lebhafter Hauptstrasse und guten Straenden.",
+    [LOCATION_CONTENT_KEYS.PEFKOHORI]:
+      "{locationName} bietet einen langen Strand und eine lebhafte Hauptstrasse. Diese Seite hilft Ihnen, eine Autovermietung mit bequemer Uebergabe fuer Ihren Aufenthalt zu organisieren.",
+    [LOCATION_CONTENT_KEYS.HANIOTI]:
+      "{locationName} ist ein lebhafter Ferienort mit langem Strand und vielen Annehmlichkeiten. Organisieren Sie Ihre Anmietung mit einer Uebergabe, die zu Ihrer Unterkunft passt.",
+    [LOCATION_CONTENT_KEYS.POLICHRONO]:
+      "{locationName} ist ein familienfreundlicher Ferienort mit langem Strand. Diese Seite verbindet Sie mit einer Autovermietung und einer Uebergabe, die zu Ihrem Aufenthalt passt.",
+    [LOCATION_CONTENT_KEYS.AFITOS]:
+      "{locationName} ist ein malerisches Dorf auf Kassandra mit Steinhaeusern und einer Lage auf den Klippen.",
+    [LOCATION_CONTENT_KEYS.KRIOPIGI]:
+      "{locationName} liegt zwischen den belebteren Ferienorten und bietet eine ruhigere Basis. Diese Seite hilft Ihnen, einen Mietwagen mit Uebergabe in {locationName} oder in der Naehe zu buchen.",
+    [LOCATION_CONTENT_KEYS.SANI]:
+      "{locationName} ist fuer sein gehobenes Resort und den Yachthafen bekannt. Organisieren Sie Ihre Autovermietung mit Uebergabe in {locationName} oder an Ihrer Unterkunft fuer Fahrten rund um Kassandra.",
+    [LOCATION_CONTENT_KEYS.KASSANDRIA]:
+      "{locationName} ist der wichtigste Ort im Zentrum der Halbinsel Kassandra.",
+    [LOCATION_CONTENT_KEYS.FOURKA]:
+      "{locationName} ist ein kleiner Ferienort an der Westkueste. Organisieren Sie Ihre Anmietung mit Uebergabe in {locationName} oder an Ihrer Unterkunft fuer einen entspannten Aufenthalt.",
+    [LOCATION_CONTENT_KEYS.METAMORFOSI]:
+      "{locationName} ist ein kleines Dorf auf Sithonia mit entspannter Atmosphaere. Diese Seite hilft Ihnen, einen Mietwagen mit Uebergabe in {locationName} oder in der Naehe zu buchen.",
+    [LOCATION_CONTENT_KEYS.AGIOS_NIKOLAOS_HALKIDIKI]:
+      "{locationName} ist ein malerisches Dorf an der Ostkueste von Sithonia. Organisieren Sie Ihre Anmietung mit einer Uebergabe, die zu Ihrer Unterkunft und Ihren Plaenen passt.",
+    [LOCATION_CONTENT_KEYS.ORMILIA]:
+      "{locationName} liegt auf dem Weg von Thessaloniki nach Halkidiki. Diese Seite hilft Ihnen, eine Autovermietung mit Uebergabe in {locationName} oder an Ihrer Unterkunft zu organisieren.",
+    [LOCATION_CONTENT_KEYS.PETRALONA]:
+      "{locationName} ist fuer die Petralona-Hoehle bekannt und liegt etwas landeinwaerts von der Kueste. Organisieren Sie Ihre Anmietung mit Uebergabe in {locationName} oder in der Naehe fuer eine flexible Reise.",
+    [LOCATION_CONTENT_KEYS.VRASNA]:
+      "{locationName} ist ein Kuestendorf im Osten von Halkidiki. Diese Seite hilft Ihnen, eine Anmietung mit Uebergabe in {locationName} oder an Ihrer Unterkunft zu organisieren.",
+    [LOCATION_CONTENT_KEYS.OLYMPIADA]:
+      "{locationName} ist ein Kuestendorf in der Naehe des antiken Stageira. Organisieren Sie Ihre Anmietung mit Uebergabe in {locationName} oder an Ihrer Unterkunft fuer Ausfluege zu Geschichte und Strand.",
+  },
+  bg: {
+    [LOCATION_CONTENT_KEYS.THESSALONIKI]:
+      "Тази страница за локацията е насочена към търсенето в Thessaloniki и помага за бързо получаване на автомобил за престой в града, бизнес пътувания и трансфери до Halkidiki.",
+    [LOCATION_CONTENT_KEYS.HALKIDIKI]:
+      "Халкидики е един от най-популярните курортни региони в Гърция, където кола под наем е особено удобна за пътувания между плажове, селища и полуостровите Касандра и Ситония. Natali Cars ще ви помогне бързо да организирате наем на кола в Халкидики за комфортна почивка и удобно придвижване из региона.",
+    [LOCATION_CONTENT_KEYS.NEA_KALLIKRATIA]:
+      "Неа Каликратия е популярен крайбрежен град по пътя към Халкидики.",
+    [LOCATION_CONTENT_KEYS.SITHONIA]:
+      "Тази страница за подрегиона е насочена към пътувания по източното крайбрежие на Halkidiki, престой във вили и гъвкаво получаване на автомобил за по-дълги почивки в {locationName}.",
+    [LOCATION_CONTENT_KEYS.KASSANDRA]:
+      "Тази страница за {locationName} е създадена за пътувания с насоченост към курортите и е свързана с основния раздел за Halkidiki за по-лесно планиране.",
+    [LOCATION_CONTENT_KEYS.NEA_MOUDANIA]:
+      "{locationName} е главното пристанище и вход към Halkidiki. Организирайте наем на кола с получаване в града или близо до пристанището за удобен старт на пътуването.",
+    [LOCATION_CONTENT_KEYS.NIKITI]:
+      "{locationName} е едно от основните градчета на Sithonia. Тази страница ви помага да изберете кола под наем с получаване, удобно за престоя ви в {locationName} или наблизо.",
+    [LOCATION_CONTENT_KEYS.NEOS_MARMARAS]:
+      "{locationName} е оживен курортен град на Sithonia с пристанище и много места за настаняване. Организирайте наема с получаване, което отговаря на плановете ви.",
+    [LOCATION_CONTENT_KEYS.SARTI]:
+      "{locationName} е известен с дългия си плаж и спокойната атмосфера. Тази страница ви помага да резервирате кола под наем с получаване в {locationName} или при мястото ви за настаняване.",
+    [LOCATION_CONTENT_KEYS.KALLITHEA]:
+      "{locationName} е популярен курорт на Kassandra с оживена главна улица и добри плажове.",
+    [LOCATION_CONTENT_KEYS.PEFKOHORI]:
+      "{locationName} предлага дълъг плаж и оживена централна улица. Тази страница ви помага да организирате кола под наем с удобно получаване за престоя ви.",
+    [LOCATION_CONTENT_KEYS.HANIOTI]:
+      "{locationName} е оживен курорт с дълъг плаж и много удобства. Организирайте наем с получаване, което подхожда на мястото ви за настаняване.",
+    [LOCATION_CONTENT_KEYS.POLICHRONO]:
+      "{locationName} е семеен курорт с дълъг плаж. Тази страница ви свързва с кола под наем и получаване, съобразено с престоя ви.",
+    [LOCATION_CONTENT_KEYS.AFITOS]:
+      "{locationName} е живописно селище на Kassandra с каменни къщи и разположение върху скала.",
+    [LOCATION_CONTENT_KEYS.KRIOPIGI]:
+      "{locationName} се намира между по-оживените курорти и предлага по-спокойна база. Тази страница ви помага да резервирате кола под наем с получаване в {locationName} или наблизо.",
+    [LOCATION_CONTENT_KEYS.SANI]:
+      "{locationName} е известен с премиум курорта и яхтеното пристанище. Организирайте кола под наем с получаване в {locationName} или при мястото ви за настаняване за пътувания из Kassandra.",
+    [LOCATION_CONTENT_KEYS.KASSANDRIA]:
+      "{locationName} е главният град в централната част на полуостров Kassandra.",
+    [LOCATION_CONTENT_KEYS.FOURKA]:
+      "{locationName} е малък курорт на западното крайбрежие. Организирайте наем с получаване в {locationName} или при мястото ви за настаняване за по-спокойна почивка.",
+    [LOCATION_CONTENT_KEYS.METAMORFOSI]:
+      "{locationName} е малко селище на Sithonia със спокойна атмосфера. Тази страница ви помага да резервирате кола под наем с получаване в {locationName} или наблизо.",
+    [LOCATION_CONTENT_KEYS.AGIOS_NIKOLAOS_HALKIDIKI]:
+      "{locationName} е живописно селище на източния бряг на Sithonia. Организирайте наем с получаване, което подхожда на мястото ви за настаняване и плановете ви.",
+    [LOCATION_CONTENT_KEYS.ORMILIA]:
+      "{locationName} е по пътя към Halkidiki от Thessaloniki. Тази страница ви помага да организирате кола под наем с получаване в {locationName} или при мястото ви за настаняване.",
+    [LOCATION_CONTENT_KEYS.PETRALONA]:
+      "{locationName} е известна с пещерата Петралона и се намира навътре от брега. Организирайте наем с получаване в {locationName} или наблизо за по-гъвкаво пътуване.",
+    [LOCATION_CONTENT_KEYS.VRASNA]:
+      "{locationName} е крайбрежно селище в източната част на Halkidiki. Тази страница ви помага да организирате наем с получаване в {locationName} или при мястото ви за настаняване.",
+    [LOCATION_CONTENT_KEYS.OLYMPIADA]:
+      "{locationName} е крайбрежно селище близо до древна Стагира. Организирайте наем с получаване в {locationName} или при мястото ви за настаняване за исторически и плажни пътувания.",
+  },
+  ro: {
+    [LOCATION_CONTENT_KEYS.THESSALONIKI]:
+      "Aceasta pagina de locatie vizeaza cererea din Thessaloniki si ii conecteaza pe calatori cu preluare rapida pentru sejururi in oras, calatorii de afaceri si transferuri spre Halkidiki.",
+    [LOCATION_CONTENT_KEYS.HALKIDIKI]:
+      "Halkidiki este una dintre cele mai populare regiuni de vacanta din Grecia, unde inchirierea unei masini este deosebit de convenabila pentru drumuri intre plaje, localitati si peninsulele Kassandra si Sithonia. Natali Cars va ajuta sa organizati rapid inchiriere auto in Halkidiki pentru un sejur confortabil si deplasari usoare prin regiune.",
+    [LOCATION_CONTENT_KEYS.NEA_KALLIKRATIA]:
+      "Nea Kallikratia este un oras litoral popular pe drumul spre Halkidiki.",
+    [LOCATION_CONTENT_KEYS.SITHONIA]:
+      "Aceasta pagina de subregiune este orientata spre calatorii pe coasta estica din Halkidiki, sejururi in vile si preluare flexibila pentru vacante mai lungi in {locationName}.",
+    [LOCATION_CONTENT_KEYS.KASSANDRA]:
+      "Aceasta pagina pentru {locationName} este construita pentru calatorii orientate spre statiuni si este legata de hubul principal Halkidiki pentru o planificare mai usoara.",
+    [LOCATION_CONTENT_KEYS.NEA_MOUDANIA]:
+      "{locationName} este portul principal si poarta de intrare spre Halkidiki. Organizati inchirierea unei masini cu preluare in oras sau langa port pentru un inceput comod al calatoriei.",
+    [LOCATION_CONTENT_KEYS.NIKITI]:
+      "{locationName} este unul dintre principalele orasele din Sithonia. Aceasta pagina va ajuta sa gasiti inchiriere auto cu preluare potrivita pentru sejurul dvs. in {locationName} sau in apropiere.",
+    [LOCATION_CONTENT_KEYS.NEOS_MARMARAS]:
+      "{locationName} este o statiune animata din Sithonia, cu port si multe unitati de cazare. Organizati inchirierea cu o preluare care se potriveste planurilor dvs.",
+    [LOCATION_CONTENT_KEYS.SARTI]:
+      "{locationName} este cunoscuta pentru plaja lunga si atmosfera relaxata. Aceasta pagina va ajuta sa rezervati o masina cu preluare in {locationName} sau la cazare.",
+    [LOCATION_CONTENT_KEYS.KALLITHEA]:
+      "{locationName} este o statiune populara din Kassandra, cu strada principala animata si plaje bune.",
+    [LOCATION_CONTENT_KEYS.PEFKOHORI]:
+      "{locationName} ofera o plaja lunga si o strada principala aglomerata. Aceasta pagina va ajuta sa organizati inchiriere auto cu preluare convenabila pentru sejurul dvs.",
+    [LOCATION_CONTENT_KEYS.HANIOTI]:
+      "{locationName} este o statiune animata cu plaja lunga si multe facilitati. Organizati inchirierea cu o preluare potrivita pentru cazarea dvs.",
+    [LOCATION_CONTENT_KEYS.POLICHRONO]:
+      "{locationName} este o statiune potrivita pentru familii, cu plaja lunga. Aceasta pagina va conecteaza la inchiriere auto cu preluare adaptata sejurului dvs.",
+    [LOCATION_CONTENT_KEYS.AFITOS]:
+      "{locationName} este un sat pitoresc din Kassandra, cu case de piatra si amplasare pe faleza.",
+    [LOCATION_CONTENT_KEYS.KRIOPIGI]:
+      "{locationName} se afla intre statiunile mai animate si ofera o baza mai linistita. Aceasta pagina va ajuta sa rezervati inchiriere auto cu preluare in {locationName} sau in apropiere.",
+    [LOCATION_CONTENT_KEYS.SANI]:
+      "{locationName} este cunoscuta pentru resortul premium si marina. Organizati inchiriere auto cu preluare in {locationName} sau la cazare pentru drumuri prin Kassandra.",
+    [LOCATION_CONTENT_KEYS.KASSANDRIA]:
+      "{locationName} este orasul principal din centrul peninsulei Kassandra.",
+    [LOCATION_CONTENT_KEYS.FOURKA]:
+      "{locationName} este o statiune mica de pe coasta vestica. Organizati inchirierea cu preluare in {locationName} sau la cazare pentru un sejur relaxat.",
+    [LOCATION_CONTENT_KEYS.METAMORFOSI]:
+      "{locationName} este un sat mic din Sithonia, cu atmosfera relaxata. Aceasta pagina va ajuta sa rezervati inchiriere auto cu preluare in {locationName} sau in apropiere.",
+    [LOCATION_CONTENT_KEYS.AGIOS_NIKOLAOS_HALKIDIKI]:
+      "{locationName} este un sat pitoresc de pe coasta estica din Sithonia. Organizati inchirierea cu o preluare potrivita pentru cazarea si planurile dvs.",
+    [LOCATION_CONTENT_KEYS.ORMILIA]:
+      "{locationName} se afla pe drumul spre Halkidiki din Thessaloniki. Aceasta pagina va ajuta sa organizati inchiriere auto cu preluare in {locationName} sau la cazare.",
+    [LOCATION_CONTENT_KEYS.PETRALONA]:
+      "{locationName} este cunoscuta pentru Pestera Petralona si se afla mai spre interior fata de coasta. Organizati inchirierea cu preluare in {locationName} sau in apropiere pentru o calatorie mai flexibila.",
+    [LOCATION_CONTENT_KEYS.VRASNA]:
+      "{locationName} este un sat de coasta din partea estica a Halkidiki. Aceasta pagina va ajuta sa organizati inchirierea cu preluare in {locationName} sau la cazare.",
+    [LOCATION_CONTENT_KEYS.OLYMPIADA]:
+      "{locationName} este un sat de coasta aproape de Stageira antica. Organizati inchirierea cu preluare in {locationName} sau la cazare pentru drumuri istorice si zile la plaja.",
+  },
+  sr: {
+    [LOCATION_CONTENT_KEYS.THESSALONIKI]:
+      "Ova stranica lokacije cilja potraznju u Thessaloniki i povezuje putnike sa brzim preuzimanjem automobila za boravak u gradu, poslovna putovanja i transfere ka Halkidiki.",
+    [LOCATION_CONTENT_KEYS.HALKIDIKI]:
+      "Халкидики је један од најпопуларнијих летовалишних региона у Грчкој, где је изнајмљивање аута посебно практично за вожњу између плажа, места и полуострва Касандра и Ситонија. Natali Cars вам помаже да брзо организујете изнајмљивање аута у Халкидикију за удобан одмор и лако кретање по региону.",
+    [LOCATION_CONTENT_KEYS.NEA_KALLIKRATIA]:
+      "Неа Каликратија је популарно приобално место на путу ка Халкидикију.",
+    [LOCATION_CONTENT_KEYS.SITHONIA]:
+      "Ova stranica podregiona namenjena je putovanjima duz istocne obale Halkidiki, boravku u vilama i fleksibilnom preuzimanju automobila za duzi odmor u {locationName}.",
+    [LOCATION_CONTENT_KEYS.KASSANDRA]:
+      "Ova stranica za {locationName} napravljena je za putovanja usmerena na letovalista i povezana je sa glavnim Halkidiki hubom radi lakseg planiranja puta.",
+    [LOCATION_CONTENT_KEYS.NEA_MOUDANIA]:
+      "{locationName} je glavna luka i ulaz u Halkidiki. Organizujte rent a car sa preuzimanjem u mestu ili blizu luke za laksi pocetak putovanja.",
+    [LOCATION_CONTENT_KEYS.NIKITI]:
+      "{locationName} je jedno od glavnih mesta na Sithonia. Ova stranica vam pomaze da pronadjete rent a car sa preuzimanjem prilagodjenim vasem boravku u {locationName} ili u blizini.",
+    [LOCATION_CONTENT_KEYS.NEOS_MARMARAS]:
+      "{locationName} je zivo letovaliste na Sithonia sa lukom i mnogo smestaja. Organizujte najam sa preuzimanjem koje odgovara vasim planovima.",
+    [LOCATION_CONTENT_KEYS.SARTI]:
+      "{locationName} je poznat po dugoj plazi i opustenoj atmosferi. Ova stranica vam pomaze da rezervisete auto sa preuzimanjem u {locationName} ili kod smestaja.",
+    [LOCATION_CONTENT_KEYS.KALLITHEA]:
+      "{locationName} je popularno letovaliste na Kassandra sa zivom glavnom ulicom i dobrim plazama.",
+    [LOCATION_CONTENT_KEYS.PEFKOHORI]:
+      "{locationName} nudi dugu plazu i prometnu glavnu ulicu. Ova stranica vam pomaze da organizujete rent a car sa prakticnim preuzimanjem za vas boravak.",
+    [LOCATION_CONTENT_KEYS.HANIOTI]:
+      "{locationName} je zivo letovaliste sa dugom plazom i mnogo sadrzaja. Organizujte najam sa preuzimanjem koje odgovara vasem smestaju.",
+    [LOCATION_CONTENT_KEYS.POLICHRONO]:
+      "{locationName} je porodicno letovaliste sa dugom plazom. Ova stranica vas povezuje sa rent a car ponudom i preuzimanjem prilagodjenim vasem boravku.",
+    [LOCATION_CONTENT_KEYS.AFITOS]:
+      "{locationName} je slikovito selo na Kassandra sa kamenim kucama i polozajem na litici.",
+    [LOCATION_CONTENT_KEYS.KRIOPIGI]:
+      "{locationName} se nalazi izmedju prometnijih letovalista i nudi mirniju bazu. Ova stranica vam pomaze da rezervisete rent a car sa preuzimanjem u {locationName} ili u blizini.",
+    [LOCATION_CONTENT_KEYS.SANI]:
+      "{locationName} je poznat po premium rizortu i marini. Organizujte rent a car sa preuzimanjem u {locationName} ili kod smestaja za voznje po Kassandra.",
+    [LOCATION_CONTENT_KEYS.KASSANDRIA]:
+      "{locationName} je glavno mesto u centralnom delu poluostrva Kassandra.",
+    [LOCATION_CONTENT_KEYS.FOURKA]:
+      "{locationName} je malo letovaliste na zapadnoj obali. Organizujte najam sa preuzimanjem u {locationName} ili kod smestaja za opusten boravak.",
+    [LOCATION_CONTENT_KEYS.METAMORFOSI]:
+      "{locationName} je malo selo na Sithonia sa opustenom atmosferom. Ova stranica vam pomaze da rezervisete rent a car sa preuzimanjem u {locationName} ili u blizini.",
+    [LOCATION_CONTENT_KEYS.AGIOS_NIKOLAOS_HALKIDIKI]:
+      "{locationName} je slikovito selo na istocnoj obali Sithonia. Organizujte najam sa preuzimanjem koje odgovara vasem smestaju i planovima.",
+    [LOCATION_CONTENT_KEYS.ORMILIA]:
+      "{locationName} se nalazi na putu ka Halkidiki iz Thessaloniki. Ova stranica vam pomaze da organizujete rent a car sa preuzimanjem u {locationName} ili kod smestaja.",
+    [LOCATION_CONTENT_KEYS.PETRALONA]:
+      "{locationName} je poznata po pecini Petralona i nalazi se u unutrasnjosti, nedaleko od obale. Organizujte najam sa preuzimanjem u {locationName} ili u blizini za fleksibilnije putovanje.",
+    [LOCATION_CONTENT_KEYS.VRASNA]:
+      "{locationName} je primorsko selo na istocnoj strani Halkidiki. Ova stranica vam pomaze da organizujete najam sa preuzimanjem u {locationName} ili kod smestaja.",
+    [LOCATION_CONTENT_KEYS.OLYMPIADA]:
+      "{locationName} je primorsko selo blizu anticke Stagire. Organizujte najam sa preuzimanjem u {locationName} ili kod smestaja za istorijske i plazne izlete.",
   },
 };
 
@@ -699,8 +1185,363 @@ const locationFaqFallbackTemplates: Partial<
   ],
 };
 
+const fallbackShortNameOverridesByLocale: Partial<
+  Record<SupportedLocale, Record<string, string>>
+> = {
+  ru: {
+    "Nea Moudania": "Неа Муданья",
+    Nikiti: "Никити",
+    "Neos Marmaras": "Неос Мармарас",
+    Sarti: "Сарти",
+    Kallithea: "Каллифея",
+    Pefkohori: "Пефкохори",
+    Hanioti: "Ханиоти",
+    Polichrono: "Полихроно",
+    Afitos: "Афитос",
+    Kriopigi: "Криопиги",
+    Sani: "Сани",
+    Kassandria: "Кассандрия",
+    Fourka: "Фурка",
+    Metamorfosi: "Метаморфоси",
+    "Agios Nikolaos": "Агиос Николаос",
+    Ormilia: "Ормилия",
+    Petralona: "Петралона",
+    Vrasna: "Врасна",
+    Olympiada: "Олимпиада",
+    "Nea Fokea": "Неа Фокея",
+    Sykes: "Сикья",
+    Stratoni: "Стратони",
+    "Porto Carras": "Порто Карас",
+    Thessaloniki: "Салоники",
+    Halkidiki: "Халкидики",
+    Sithonia: "Ситония",
+    Kassandra: "Кассандра",
+    "Nea Kallikratia": "Неа Калликратия",
+  },
+  uk: {
+    "Nea Moudania": "Неа Муданія",
+    Nikiti: "Нікіті",
+    "Neos Marmaras": "Неос Мармарас",
+    Sarti: "Сарті",
+    Kallithea: "Калліфея",
+    Pefkohori: "Пефкохорі",
+    Hanioti: "Ханіоті",
+    Polichrono: "Поліхроно",
+    Afitos: "Афітос",
+    Kriopigi: "Кріопігі",
+    Sani: "Сані",
+    Kassandria: "Кассандрія",
+    Fourka: "Фурка",
+    Metamorfosi: "Метаморфосі",
+    "Agios Nikolaos": "Агіос Ніколаос",
+    Ormilia: "Ормілія",
+    Petralona: "Петралона",
+    Vrasna: "Врасна",
+    Olympiada: "Олімпіада",
+    "Nea Fokea": "Неа Фокея",
+    Sykes: "Сікія",
+    Stratoni: "Стратоні",
+    "Porto Carras": "Порто Каррас",
+    Thessaloniki: "Салоніки",
+    Halkidiki: "Халкідікі",
+    Sithonia: "Ситонія",
+    Kassandra: "Кассандра",
+    "Nea Kallikratia": "Неа Каллікратія",
+  },
+  el: {
+    "Nea Moudania": "Νέα Μουδανιά",
+    Nikiti: "Νικήτη",
+    "Neos Marmaras": "Νέος Μαρμαράς",
+    Sarti: "Σάρτη",
+    Kallithea: "Καλλιθέα",
+    Pefkohori: "Πευκοχώρι",
+    Hanioti: "Χανιώτη",
+    Polichrono: "Πολύχρονο",
+    Afitos: "Άφυτος",
+    Kriopigi: "Κρυοπηγή",
+    Sani: "Σάνη",
+    Kassandria: "Κασσάνδρεια",
+    Fourka: "Φούρκα",
+    Metamorfosi: "Μεταμόρφωση",
+    "Agios Nikolaos": "Άγιος Νικόλαος",
+    Ormilia: "Ορμύλια",
+    Petralona: "Πετράλωνα",
+    Vrasna: "Βρασνά",
+    Olympiada: "Ολυμπιάδα",
+    "Nea Fokea": "Νέα Φώκαια",
+    Sykes: "Συκιά",
+    Stratoni: "Στρατώνι",
+    "Porto Carras": "Πόρτο Καρράς",
+    Thessaloniki: "Θεσσαλονίκη",
+    Halkidiki: "Χαλκιδική",
+    Sithonia: "Σιθωνία",
+    Kassandra: "Κασσάνδρα",
+    "Nea Kallikratia": "Νέα Καλλικράτεια",
+  },
+  bg: {
+    "Nea Moudania": "Неа Мудания",
+    Nikiti: "Никити",
+    "Neos Marmaras": "Неос Мармарас",
+    Sarti: "Сарти",
+    Kallithea: "Калитея",
+    Pefkohori: "Пефкохори",
+    Hanioti: "Ханиоти",
+    Polichrono: "Полихроно",
+    Afitos: "Афитос",
+    Kriopigi: "Криопиги",
+    Sani: "Сани",
+    Kassandria: "Касандрия",
+    Fourka: "Фурка",
+    Metamorfosi: "Метаморфоси",
+    "Agios Nikolaos": "Агиос Николаос",
+    Ormilia: "Ормилия",
+    Petralona: "Петралона",
+    Vrasna: "Врасна",
+    Olympiada: "Олимпиада",
+    "Nea Fokea": "Неа Фокея",
+    Sykes: "Сикия",
+    Stratoni: "Стратони",
+    "Porto Carras": "Порто Карас",
+    Thessaloniki: "Солун",
+    Halkidiki: "Халкидики",
+    Sithonia: "Ситония",
+    Kassandra: "Касандра",
+    "Nea Kallikratia": "Неа Каликратия",
+  },
+  ro: {
+    Thessaloniki: "Salonic",
+    "Thessaloniki Airport": "Aeroport Salonic",
+  },
+  sr: {
+    "Nea Moudania": "Неа Муданија",
+    Nikiti: "Никити",
+    "Neos Marmaras": "Неос Мармарас",
+    Sarti: "Сарти",
+    Kallithea: "Калитеа",
+    Pefkohori: "Пефкохори",
+    Hanioti: "Ханиоти",
+    Polichrono: "Полихроно",
+    Afitos: "Афитос",
+    Kriopigi: "Криопиги",
+    Sani: "Сани",
+    Kassandria: "Касандрија",
+    Fourka: "Фурка",
+    Metamorfosi: "Метаморфоси",
+    "Agios Nikolaos": "Агиос Николаос",
+    Ormilia: "Ормилија",
+    Petralona: "Петралона",
+    Vrasna: "Врасна",
+    Olympiada: "Олимпијада",
+    "Nea Fokea": "Неа Фокеја",
+    Sykes: "Сикија",
+    Stratoni: "Стратони",
+    "Porto Carras": "Порто Карас",
+    Thessaloniki: "Солун",
+    Halkidiki: "Халкидики",
+    Sithonia: "Ситонија",
+    Kassandra: "Касандра",
+    "Nea Kallikratia": "Неа Каликратија",
+  },
+};
+
+const fallbackNearbyPlaceOverridesByLocale: Partial<
+  Record<SupportedLocale, Record<string, string>>
+> = {
+  ru: {
+    "Agios Nikolaos (Sithonia)": "Агиос Николаос (Ситония)",
+    "Mount Athos area (by boat)": "Район Афона (на лодке)",
+    "Mount Athos (viewpoints)": "Афон (смотровые точки)",
+    "Sykes Beach": "Пляж Сикья",
+    "Thessaloniki (day trip)": "Салоники (поездка на день)",
+    "Ancient Stageira": "Древняя Стагира",
+  },
+  uk: {
+    "Agios Nikolaos (Sithonia)": "Агіос Ніколаос (Ситонія)",
+    "Mount Athos area (by boat)": "Район Афону (човном)",
+    "Mount Athos (viewpoints)": "Афон (оглядові точки)",
+    "Sykes Beach": "Пляж Сікія",
+    "Thessaloniki (day trip)": "Салоніки (поїздка на день)",
+    "Ancient Stageira": "Стародавня Стагіра",
+  },
+  el: {
+    "Agios Nikolaos (Sithonia)": "Άγιος Νικόλαος (Σιθωνία)",
+    "Mount Athos area (by boat)": "Περιοχή Αγίου Όρους (με καραβάκι)",
+    "Mount Athos (viewpoints)": "Άγιο Όρος (σημεία θέας)",
+    "Sykes Beach": "Παραλία Συκιάς",
+    "Thessaloniki (day trip)": "Θεσσαλονίκη (ημερήσια εκδρομή)",
+    "Ancient Stageira": "Αρχαία Στάγειρα",
+  },
+  de: {
+    "Agios Nikolaos (Sithonia)": "Agios Nikolaos (Sithonia)",
+    "Mount Athos area (by boat)": "Gebiet Athos (mit dem Boot)",
+    "Mount Athos (viewpoints)": "Athos (Aussichtspunkte)",
+    "Sykes Beach": "Strand Sykes",
+    "Thessaloniki (day trip)": "Thessaloniki (Tagesausflug)",
+    "Ancient Stageira": "Antikes Stageira",
+  },
+  bg: {
+    "Agios Nikolaos (Sithonia)": "Агиос Николаос (Ситония)",
+    "Mount Athos area (by boat)": "Районът на Атон (с лодка)",
+    "Mount Athos (viewpoints)": "Атон (панорамни точки)",
+    "Sykes Beach": "Плаж Сикия",
+    "Thessaloniki (day trip)": "Солун (еднодневна екскурзия)",
+    "Ancient Stageira": "Древна Стагира",
+  },
+  ro: {
+    "Agios Nikolaos (Sithonia)": "Agios Nikolaos (Sithonia)",
+    "Mount Athos area (by boat)": "Zona Muntelui Athos (cu barca)",
+    "Mount Athos (viewpoints)": "Muntele Athos (puncte panoramice)",
+    "Sykes Beach": "Plaja Sykes",
+    "Thessaloniki (day trip)": "Salonic (excursie de o zi)",
+    "Ancient Stageira": "Stageira antică",
+  },
+  sr: {
+    "Agios Nikolaos (Sithonia)": "Агиос Николаос (Ситонија)",
+    "Mount Athos area (by boat)": "Област Атоса (бродом)",
+    "Mount Athos (viewpoints)": "Атос (видиковци)",
+    "Sykes Beach": "Плажа Сикија",
+    "Thessaloniki (day trip)": "Солун (једнодневни излет)",
+    "Ancient Stageira": "Античка Стагира",
+  },
+};
+
+const fallbackUsefulTipsOverridesByLocale: Partial<
+  Record<SupportedLocale, Record<string, string>>
+> = {
+  ru: {
+    "Book in advance during peak season (July–August) for best availability.":
+      "Бронируйте заранее в высокий сезон (июль–август), чтобы получить лучший выбор автомобилей.",
+    "We offer free delivery to hotels and apartments in Nea Kallikratia.":
+      "Мы предлагаем бесплатную подачу к отелям и апартаментам в Неа Калликратии.",
+    "Nea Kallikratia is a convenient stopover en route to Sithonia and Kassandra.":
+      "Неа Калликратия — удобная остановка по пути в Ситонию и Кассандру.",
+  },
+  uk: {
+    "Book in advance during peak season (July–August) for best availability.":
+      "Бронюйте заздалегідь у високий сезон (липень–серпень), щоб мати кращий вибір автомобілів.",
+    "We offer free delivery to hotels and apartments in Nea Kallikratia.":
+      "Ми пропонуємо безкоштовну подачу до готелів і апартаментів у Неа Каллікратії.",
+    "Nea Kallikratia is a convenient stopover en route to Sithonia and Kassandra.":
+      "Неа Каллікратія — зручна зупинка дорогою до Ситонії та Кассандри.",
+  },
+  el: {
+    "Book in advance during peak season (July–August) for best availability.":
+      "Κάντε κράτηση νωρίς στην υψηλή περίοδο (Ιούλιος–Αύγουστος) για καλύτερη διαθεσιμότητα αυτοκινήτων.",
+    "We offer free delivery to hotels and apartments in Nea Kallikratia.":
+      "Προσφέρουμε δωρεάν παράδοση σε ξενοδοχεία και διαμερίσματα στη Νέα Καλλικράτεια.",
+    "Nea Kallikratia is a convenient stopover en route to Sithonia and Kassandra.":
+      "Η Νέα Καλλικράτεια είναι μια βολική στάση στον δρόμο προς τη Σιθωνία και την Κασσάνδρα.",
+  },
+  de: {
+    "Book in advance during peak season (July–August) for best availability.":
+      "Buchen Sie in der Hochsaison (Juli–August) fruehzeitig, um die beste Auswahl zu erhalten.",
+    "We offer free delivery to hotels and apartments in Nea Kallikratia.":
+      "Wir bieten kostenlose Zustellung zu Hotels und Apartments in Nea Kallikratia an.",
+    "Nea Kallikratia is a convenient stopover en route to Sithonia and Kassandra.":
+      "Nea Kallikratia ist ein praktischer Zwischenstopp auf dem Weg nach Sithonia und Kassandra.",
+  },
+  bg: {
+    "Book in advance during peak season (July–August) for best availability.":
+      "Резервирайте предварително през активния сезон (юли–август), за да имате по-добър избор на автомобили.",
+    "We offer free delivery to hotels and apartments in Nea Kallikratia.":
+      "Предлагаме безплатна доставка до хотели и апартаменти в Неа Каликратия.",
+    "Nea Kallikratia is a convenient stopover en route to Sithonia and Kassandra.":
+      "Неа Каликратия е удобна спирка по пътя към Ситония и Касандра.",
+  },
+  ro: {
+    "Book in advance during peak season (July–August) for best availability.":
+      "Rezervati din timp in sezonul de varf (iulie–august) pentru cea mai buna disponibilitate.",
+    "We offer free delivery to hotels and apartments in Nea Kallikratia.":
+      "Oferim livrare gratuita la hoteluri si apartamente in Nea Kallikratia.",
+    "Nea Kallikratia is a convenient stopover en route to Sithonia and Kassandra.":
+      "Nea Kallikratia este o oprire convenabila pe drumul spre Sithonia si Kassandra.",
+  },
+  sr: {
+    "Book in advance during peak season (July–August) for best availability.":
+      "Rezervisite unapred u glavnoj sezoni (jul–avgust) za bolji izbor automobila.",
+    "We offer free delivery to hotels and apartments in Nea Kallikratia.":
+      "Nudimo besplatnu dostavu do hotela i apartmana u Nei Kalikratiji.",
+    "Nea Kallikratia is a convenient stopover en route to Sithonia and Kassandra.":
+      "Nea Kalikratija je zgodna stanica na putu ka Sitoniji i Kasandri.",
+  },
+};
+
 function fillLocationNameTemplate(template: string, locationName: string): string {
   return template.replaceAll("{locationName}", locationName);
+}
+
+function localizeFallbackShortName(locale: SupportedLocale, locationName: string): string {
+  return fallbackShortNameOverridesByLocale[locale]?.[locationName] || locationName;
+}
+
+function replaceLocalizedNames(locale: SupportedLocale, value: string): string {
+  const replacements = fallbackShortNameOverridesByLocale[locale];
+  if (!replacements) return value;
+
+  return Object.entries(replacements)
+    .sort((a, b) => b[0].length - a[0].length)
+    .reduce((text, [from, to]) => text.replaceAll(from, to), value);
+}
+
+function getTranslatedLocationIntroText(
+  locale: SupportedLocale,
+  contentKey: LocationContentKey,
+  locationName: string,
+  englishIntroText: string
+): string {
+  if (locale === DEFAULT_LOCALE) {
+    return englishIntroText;
+  }
+
+  const template = locationIntroTranslationTemplates[locale]?.[contentKey];
+  if (!template) {
+    throw new Error(
+      `[locationSeoRepo] Missing introText translation for ${contentKey} locale ${locale}`
+    );
+  }
+
+  return replaceLocalizedNames(locale, fillLocationNameTemplate(template, locationName));
+}
+
+function keepOnlyFirstSentence(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+
+  const firstSentence = trimmed.match(/^[\s\S]*?[.!?](?=\s|$)/);
+  return firstSentence ? firstSentence[0].trim() : trimmed;
+}
+
+const LOCATION_BOOKING_COPY_FULL_INTRO_CONTENT_KEYS = new Set<LocationContentKey>([
+  LOCATION_CONTENT_KEYS.HALKIDIKI,
+]);
+
+function getIntroTextBeforeBookingSentence(
+  contentKey: LocationContentKey,
+  value: string
+): string {
+  if (LOCATION_BOOKING_COPY_FULL_INTRO_CONTENT_KEYS.has(contentKey)) {
+    return value.trim();
+  }
+
+  return keepOnlyFirstSentence(value);
+}
+
+function localizeFallbackListItem(
+  locale: SupportedLocale,
+  value: string,
+  overrides: Partial<Record<SupportedLocale, Record<string, string>>>
+): string {
+  const exactOverride = overrides[locale]?.[value];
+  return replaceLocalizedNames(locale, exactOverride || value);
+}
+
+function localizeFallbackList(
+  locale: SupportedLocale,
+  values: string[] | undefined,
+  overrides: Partial<Record<SupportedLocale, Record<string, string>>>
+): string[] | undefined {
+  if (!values || values.length === 0) return values;
+  return values.map((value) => localizeFallbackListItem(locale, value, overrides));
 }
 
 function buildLocalizedFallbackFaq(
@@ -728,18 +1569,30 @@ function buildLocalizedFallbackLocationContent(
   baseContent: LocationSeoContent
 ): LocationSeoContent {
   const template = locationContentFallbackTemplates[locale];
-  const locationName = baseContent.shortName;
+  const locationName = localizeFallbackShortName(locale, baseContent.shortName);
   const localizedFaq = buildLocalizedFallbackFaq(locale, baseContent.faq, locationName);
 
   if (!template) {
     return {
       ...baseContent,
+      shortName: locationName,
+      nearbyPlaces: localizeFallbackList(
+        locale,
+        baseContent.nearbyPlaces,
+        fallbackNearbyPlaceOverridesByLocale
+      ),
+      usefulTips: localizeFallbackList(
+        locale,
+        baseContent.usefulTips,
+        fallbackUsefulTipsOverridesByLocale
+      ),
       faq: localizedFaq,
     };
   }
 
   return {
     ...baseContent,
+    shortName: locationName,
     h1: fillLocationNameTemplate(template.h1, locationName),
     seoTitle: fillLocationNameTemplate(template.seoTitle, locationName),
     seoDescription: fillLocationNameTemplate(template.seoDescription, locationName),
@@ -750,6 +1603,16 @@ function buildLocalizedFallbackLocationContent(
     pickupGuidance: baseContent.pickupGuidance
       ? fillLocationNameTemplate(template.pickupGuidance, locationName)
       : baseContent.pickupGuidance,
+    nearbyPlaces: localizeFallbackList(
+      locale,
+      baseContent.nearbyPlaces,
+      fallbackNearbyPlaceOverridesByLocale
+    ),
+    usefulTips: localizeFallbackList(
+      locale,
+      baseContent.usefulTips,
+      fallbackUsefulTipsOverridesByLocale
+    ),
     faq: localizedFaq,
   };
 }
@@ -762,15 +1625,73 @@ function expandLocationContentRecord(
     throw new Error("[locationSeoRepo] Missing default locale location content");
   }
 
-  const expanded = expandLocaleRecord(partial);
+  const expanded = {} as Record<SupportedLocale, LocationSeoContent>;
 
   for (const locale of SUPPORTED_LOCALES) {
-    if (locale === DEFAULT_LOCALE) continue;
-    if (partial[locale]) continue;
-    expanded[locale] = buildLocalizedFallbackLocationContent(locale, fallbackContent);
+    const localizedFallback =
+      locale === DEFAULT_LOCALE
+        ? fallbackContent
+        : buildLocalizedFallbackLocationContent(locale, fallbackContent);
+    const localizedPartial = partial[locale];
+
+    expanded[locale] = localizedPartial
+      ? {
+          ...localizedFallback,
+          ...localizedPartial,
+        }
+      : localizedFallback;
   }
 
   return expanded;
+}
+
+function applyIntroTextOverrides(
+  contentKey: LocationContentKey,
+  localizedContent: Record<SupportedLocale, LocationSeoContent>
+): Record<SupportedLocale, LocationSeoContent> {
+  if (!shouldApplyLocationBookingCopyToContentKey(contentKey)) {
+    return localizedContent;
+  }
+
+  const englishIntroText = localizedContent[DEFAULT_LOCALE].introText;
+
+  return SUPPORTED_LOCALES.reduce((acc, locale) => {
+    const content = localizedContent[locale];
+    const translatedIntroText = getTranslatedLocationIntroText(
+      locale,
+      contentKey,
+      content.shortName,
+      englishIntroText
+    );
+
+    acc[locale] = {
+      ...content,
+      introText: appendLocationBookingSentence(
+        getIntroTextBeforeBookingSentence(contentKey, translatedIntroText),
+        locale,
+        content.shortName
+      ),
+    };
+    return acc;
+  }, {} as Record<SupportedLocale, LocationSeoContent>);
+}
+function applyDistanceTextOverrides(
+  contentKey: LocationContentKey,
+  localizedContent: Record<SupportedLocale, LocationSeoContent>
+): Record<SupportedLocale, LocationSeoContent> {
+  const overrides = distanceToThessalonikiTextOverridesByContentKey[contentKey];
+  if (!overrides) return localizedContent;
+
+  return SUPPORTED_LOCALES.reduce((acc, locale) => {
+    const overrideText = overrides[locale];
+    acc[locale] = overrideText
+      ? {
+          ...localizedContent[locale],
+          distanceToThessalonikiText: overrideText,
+        }
+      : localizedContent[locale];
+    return acc;
+  }, {} as Record<SupportedLocale, LocationSeoContent>);
 }
 
 /**
@@ -797,7 +1718,7 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Rent a car in Thessaloniki city with hotel-area pickup, direct communication, and transfer-ready scheduling to Halkidiki.",
       introText:
-        "This location page targets Thessaloniki city demand and connects travelers to fast pickup for city stays, business trips, and Halkidiki transfers.",
+        "Thessaloniki is the second-largest city in Greece and the main center of Northern Greece. Natali Cars helps you quickly arrange car pickup for city trips, business visits, and transfers to Halkidiki. Book your rental car online in Thessaloniki with no deposit, with pickup at your accommodation or in the city, and 24/7 support.",
       areaServed: ["Thessaloniki Center", "Perea", "Kalamaria"],
       pickupLocation: "Thessaloniki City Pickup Point",
       offerName: "Thessaloniki City Car Hire Offer",
@@ -805,6 +1726,26 @@ const locationContentByKeyRaw: Record<
         "Flexible city pickup for short stays, business schedules, and direct transfer to Halkidiki resorts.",
       distanceToThessalonikiText:
         "Thessaloniki is the second-largest city in Greece and the main hub for Northern Greece.",
+      faq: [
+        {
+          question:
+            "Can I pick up the car in Thessaloniki city center or at my hotel?",
+          answer:
+            "Yes. We can arrange handover near your hotel, apartment, business address, or at an agreed meeting point in the city.",
+        },
+        {
+          question:
+            "Is Thessaloniki a convenient pickup point for trips to Halkidiki?",
+          answer:
+            "Yes. Thessaloniki is a practical starting point for city stays and onward drives to Halkidiki, with direct routes toward Kassandra and Sithonia.",
+        },
+        {
+          question:
+            "What should I provide to arrange pickup in Thessaloniki?",
+          answer:
+            "Send your accommodation address or preferred meeting point and your requested time during booking, and we will confirm the handover details with you.",
+        },
+      ],
     },
     ru: {
       shortName: "Салоники",
@@ -813,12 +1754,32 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Аренда автомобиля в Салониках с выдачей в городе, поддержкой напрямую и удобной передачей авто для поездок в Халкидики.",
       introText:
-        "SEO-страница Салоник покрывает городские заказы, командировки и поездки к побережью через единый процесс бронирования.",
+        "Салоники — второй по величине город Греции и главный центр Северной Греции. Natali Cars поможет вам быстро организовать выдачу автомобиля для поездок по городу, деловых визитов и трансферов в Халкидики. Бронируйте онлайн авто в Салониках без депозита с выдачей у места проживания или в городе и поддержкой 24/7.",
       areaServed: ["Центр Салоник", "Перея", "Каламария"],
       pickupLocation: "Точка выдачи в Салониках",
       offerName: "Предложение проката в Салониках",
       offerDescription:
         "Городская выдача для коротких поездок, рабочих визитов и трансфера в Халкидики.",
+      faq: [
+        {
+          question:
+            "Можно ли получить авто в центре Салоник или у отеля?",
+          answer:
+            "Да. Мы можем организовать выдачу рядом с вашим отелем, апартаментами, деловым адресом или в согласованной точке в городе.",
+        },
+        {
+          question:
+            "Подходят ли Салоники как точка выдачи для поездок в Халкидики?",
+          answer:
+            "Да. Салоники удобны как стартовая точка для пребывания в городе и дальнейших поездок в Халкидики по прямым маршрутам в сторону Кассандры и Ситонии.",
+        },
+        {
+          question:
+            "Что нужно указать для выдачи авто в Салониках?",
+          answer:
+            "Укажите при бронировании адрес проживания или удобную точку встречи и желаемое время, а мы подтвердим детали передачи автомобиля.",
+        },
+      ],
     },
     uk: {
       shortName: "Салоніки",
@@ -827,12 +1788,32 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Орендуйте авто в Салоніках з отриманням у місті, прямою підтримкою та зручною передачею авто для поїздок у Халкідіки.",
       introText:
-        "Локальна SEO-сторінка Салонік охоплює міські поїздки, бізнес-візити та виїзди на узбережжя через єдиний процес бронювання.",
+        "Салоніки — друге за величиною місто Греції та головний центр Північної Греції. Natali Cars допоможе вам швидко організувати видачу автомобіля для поїздок містом, ділових візитів і трансферів до Халкідікі. Бронюйте онлайн авто в Салоніках без депозиту з видачею біля місця проживання або в місті та з підтримкою 24/7.",
       areaServed: ["Центр Салонік", "Перея", "Каламарія"],
       pickupLocation: "Точка отримання в Салоніках",
       offerName: "Пропозиція оренди в Салоніках",
       offerDescription:
         "Міське отримання для коротких поїздок, робочих візитів і трансферу до Халкідік.",
+      faq: [
+        {
+          question:
+            "Чи можна отримати авто в центрі Салонік або біля готелю?",
+          answer:
+            "Так. Ми можемо організувати видачу біля вашого готелю, апартаментів, ділової адреси або в узгодженій точці в місті.",
+        },
+        {
+          question:
+            "Чи зручні Салоніки як точка отримання для поїздок до Халкідікі?",
+          answer:
+            "Так. Салоніки є зручною стартовою точкою для перебування в місті та подальших поїздок до Халкідікі прямими маршрутами у бік Кассандри та Сітонії.",
+        },
+        {
+          question:
+            "Що потрібно вказати для отримання авто в Салоніках?",
+          answer:
+            "Вкажіть під час бронювання адресу проживання або зручну точку зустрічі та бажаний час, а ми підтвердимо деталі передачі автомобіля.",
+        },
+      ],
     },
     el: {
       shortName: "Θεσσαλονίκη",
@@ -841,12 +1822,128 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Ενοικιάστε αυτοκίνητο στη Θεσσαλονίκη με παραλαβή στην πόλη, άμεση υποστήριξη και εύκολη μετακίνηση προς Χαλκιδική.",
       introText:
-        "Η τοπική SEO σελίδα Θεσσαλονίκης καλύπτει city demand, εταιρικά ταξίδια και αναχωρήσεις προς παραθαλάσσιες περιοχές.",
+        "Η Θεσσαλονίκη είναι η δεύτερη μεγαλύτερη πόλη της Ελλάδας και το κύριο κέντρο της Βόρειας Ελλάδας. Η Natali Cars σας βοηθά να οργανώσετε γρήγορα την παραλαβή αυτοκινήτου για μετακινήσεις στην πόλη, επαγγελματικά ταξίδια και μεταφορές προς τη Χαλκιδική. Κάντε online κράτηση αυτοκινήτου στη Θεσσαλονίκη χωρίς εγγύηση, με παραλαβή στο κατάλυμά σας ή στην πόλη και με υποστήριξη 24/7.",
       areaServed: ["Κέντρο Θεσσαλονίκης", "Περαία", "Καλαμαριά"],
       pickupLocation: "Σημείο παραλαβής Θεσσαλονίκης",
       offerName: "Προσφορά ενοικίασης Θεσσαλονίκης",
       offerDescription:
         "Παραλαβή στην πόλη για σύντομα ταξίδια, επαγγελματικές μετακινήσεις και άμεση μετάβαση στη Χαλκιδική.",
+      faq: [
+        {
+          question:
+            "Μπορώ να παραλάβω το αυτοκίνητο στο κέντρο της Θεσσαλονίκης ή στο ξενοδοχείο μου;",
+          answer:
+            "Ναι. Μπορούμε να οργανώσουμε την παραλαβή κοντά στο ξενοδοχείο, το διαμέρισμα, την επαγγελματική σας διεύθυνση ή σε συμφωνημένο σημείο μέσα στην πόλη.",
+        },
+        {
+          question:
+            "Είναι η Θεσσαλονίκη πρακτικό σημείο παραλαβής για ταξίδια προς τη Χαλκιδική;",
+          answer:
+            "Ναι. Η Θεσσαλονίκη είναι πρακτική αφετηρία για διαμονή στην πόλη και για συνέχεια προς τη Χαλκιδική, με άμεσες διαδρομές προς Κασσάνδρα και Σιθωνία.",
+        },
+        {
+          question:
+            "Τι πρέπει να δώσω για να οργανωθεί η παραλαβή στη Θεσσαλονίκη;",
+          answer:
+            "Στείλτε κατά την κράτηση τη διεύθυνση του καταλύματός σας ή το σημείο συνάντησης που προτιμάτε και την ώρα που σας εξυπηρετεί, και θα επιβεβαιώσουμε τις λεπτομέρειες παράδοσης.",
+        },
+      ],
+    },
+    de: {
+      introText:
+        "Thessaloniki ist die zweitgroesste Stadt Griechenlands und das wichtigste Zentrum Nordgriechenlands. Natali Cars hilft Ihnen, die Fahrzeuguebergabe fuer Stadtfahrten, Geschaeftsreisen und Transfers nach Chalkidiki schnell zu organisieren. Buchen Sie Ihren Mietwagen online in Thessaloniki ohne Kaution, mit Uebergabe an Ihrer Unterkunft oder in der Stadt und mit 24/7-Support.",
+      faq: [
+        {
+          question:
+            "Kann ich das Auto im Zentrum von Thessaloniki oder an meinem Hotel uebernehmen?",
+          answer:
+            "Ja. Wir koennen die Uebergabe in der Naehe Ihres Hotels, Apartments, Ihrer Geschaeftsadresse oder an einem vereinbarten Treffpunkt in der Stadt organisieren.",
+        },
+        {
+          question:
+            "Ist Thessaloniki ein praktischer Abholort fuer Fahrten nach Chalkidiki?",
+          answer:
+            "Ja. Thessaloniki eignet sich gut als Startpunkt fuer Aufenthalte in der Stadt und Weiterfahrten nach Chalkidiki mit direkten Routen nach Kassandra und Sithonia.",
+        },
+        {
+          question:
+            "Welche Angaben brauche ich fuer die Fahrzeuguebergabe in Thessaloniki?",
+          answer:
+            "Senden Sie bei der Buchung die Adresse Ihrer Unterkunft oder Ihren bevorzugten Treffpunkt sowie die gewuenschte Uhrzeit, und wir bestaetigen die Uebergabedetails.",
+        },
+      ],
+    },
+    bg: {
+      introText:
+        "Солун е вторият по големина град в Гърция и основният център на Северна Гърция. Natali Cars ще ви помогне бързо да организирате получаването на автомобил за пътувания в града, бизнес посещения и трансфери до Халкидики. Резервирайте онлайн кола в Солун без депозит с получаване при мястото ви за настаняване или в града и с поддръжка 24/7.",
+      faq: [
+        {
+          question:
+            "Мога ли да получа колата в центъра на Солун или до хотела си?",
+          answer:
+            "Да. Можем да организираме получаването близо до вашия хотел, апартамент, служебен адрес или на уговорена точка в града.",
+        },
+        {
+          question:
+            "Удобен ли е Солун като точка за получаване при пътувания до Халкидики?",
+          answer:
+            "Да. Солун е удобна начална точка за престой в града и последващи пътувания до Халкидики по директни маршрути към Касандра и Ситония.",
+        },
+        {
+          question:
+            "Какво трябва да посоча за получаване на колата в Солун?",
+          answer:
+            "Посочете при резервация адреса на настаняване или удобна точка за среща и желания час, а ние ще потвърдим детайлите за предаването.",
+        },
+      ],
+    },
+    ro: {
+      introText:
+        "Salonic este al doilea oraș ca mărime din Grecia și principalul centru al Greciei de Nord. Natali Cars vă ajută să organizați rapid preluarea mașinii pentru deplasări în oraș, vizite de afaceri și transferuri spre Halkidiki. Rezervați online mașina în Salonic fără depozit, cu preluare la cazare sau în oraș și cu asistență 24/7.",
+      faq: [
+        {
+          question:
+            "Pot prelua mașina în centrul Salonicului sau la hotel?",
+          answer:
+            "Da. Putem organiza predarea lângă hotelul, apartamentul, adresa dvs. de afaceri sau într-un punct de întâlnire stabilit în oraș.",
+        },
+        {
+          question:
+            "Este Salonicul un punct convenabil de preluare pentru drumuri spre Halkidiki?",
+          answer:
+            "Da. Salonicul este un punct practic de pornire pentru șederi în oraș și continuarea drumului spre Halkidiki, cu rute directe către Kassandra și Sithonia.",
+        },
+        {
+          question:
+            "Ce trebuie să trimit pentru a organiza preluarea în Salonic?",
+          answer:
+            "Trimiteți la rezervare adresa cazării sau punctul de întâlnire preferat și ora dorită, iar noi vom confirma detaliile predării.",
+        },
+      ],
+    },
+    sr: {
+      introText:
+        "Solun je drugi najveći grad u Grčkoj i glavni centar severne Grčke. Natali Cars vam pomaže da brzo organizujete preuzimanje automobila za vožnju po gradu, poslovne posete i transfere ka Halkidikiju. Rezervišite online auto u Solunu bez depozita, uz preuzimanje kod smeštaja ili u gradu i uz podršku 24/7.",
+      faq: [
+        {
+          question:
+            "Mogu li da preuzmem auto u centru Soluna ili kod hotela?",
+          answer:
+            "Da. Mozemo organizovati preuzimanje blizu vaseg hotela, apartmana, poslovne adrese ili na dogovorenom mestu u gradu.",
+        },
+        {
+          question:
+            "Da li je Solun zgodna tacka preuzimanja za putovanja ka Halkidikiju?",
+          answer:
+            "Da. Solun je prakticna pocetna tacka za boravak u gradu i nastavak voznje ka Halkidikiju, sa direktnim rutama prema Kasandri i Sitoniji.",
+        },
+        {
+          question:
+            "Sta treba da posaljem da bih organizovao preuzimanje u Solunu?",
+          answer:
+            "Posaljite pri rezervaciji adresu smestaja ili zeljeno mesto sastanka i vreme koje vam odgovara, a mi cemo potvrditi detalje primopredaje.",
+        },
+      ],
     },
   },
   [LOCATION_CONTENT_KEYS.THESSALONIKI_AIRPORT]: {
@@ -973,7 +2070,7 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Rent a car in Halkidiki with localized pickup coverage across regional hubs, beach zones, and major transfer routes.",
       introText:
-        "This regional page connects Halkidiki demand across sub-regions and links to dedicated landing pages for Sithonia and Kassandra.",
+        "Halkidiki is one of Greece's most popular resort regions, where car rental is especially convenient for trips between beaches, villages, and the Kassandra and Sithonia peninsulas. Natali Cars helps you quickly arrange car rental in Halkidiki for a comfortable holiday and convenient travel around the region.",
       areaServed: ["Nea Kallikratia", "Sithonia", "Kassandra"],
       pickupLocation: "Halkidiki Regional Pickup",
       offerName: "Halkidiki Regional Rental Offer",
@@ -981,6 +2078,26 @@ const locationContentByKeyRaw: Record<
         "Regional pickup coverage for beaches, villas, and family travel across Halkidiki.",
       distanceToThessalonikiText:
         "Halkidiki is about 110 km from Thessaloniki and roughly 90 km from Thessaloniki Airport (SKG).",
+      faq: [
+        {
+          question:
+            "Can I arrange car pickup in different parts of Halkidiki?",
+          answer:
+            "Yes. We can coordinate pickup near your accommodation or at an agreed point in Kassandra, Sithonia, Nea Kallikratia, and other accessible areas of Halkidiki.",
+        },
+        {
+          question:
+            "Is a rental car in Halkidiki convenient for trips between Kassandra and Sithonia?",
+          answer:
+            "Yes. A car is one of the easiest ways to move between beaches, villages, and resort areas across the peninsulas at your own pace.",
+        },
+        {
+          question:
+            "What should I provide to organize pickup in Halkidiki?",
+          answer:
+            "Send your accommodation area or address, your preferred meeting point if needed, and your requested time during booking, and we will confirm the handover details.",
+        },
+      ],
     },
     ru: {
       shortName: "Халкидики",
@@ -989,12 +2106,32 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Арендуйте авто в Халкидиках с покрытием по региону, пляжным зонам и ключевым маршрутам к курортам.",
       introText:
-        "Региональная SEO-страница Халкидик объединяет основной спрос и связывает подстраницы Ситонии и Кассандры.",
+        "Халкидики — один из самых популярных курортных регионов Греции, где аренда авто особенно удобна для поездок между пляжами, поселками и полуостровами Кассандра и Ситония. Natali Cars поможет быстро организовать прокат авто в Халкидиках для комфортного отдыха и удобного передвижения по региону.",
       areaServed: ["Неа Каликратия", "Ситония", "Кассандра"],
       pickupLocation: "Региональная точка выдачи Халкидики",
       offerName: "Региональное предложение Халкидики",
       offerDescription:
         "Выдача по региону для пляжного отдыха, вилл и семейных поездок.",
+      faq: [
+        {
+          question:
+            "Можно ли организовать выдачу авто в разных частях Халкидик?",
+          answer:
+            "Да. Мы можем согласовать выдачу рядом с вашим жильем или в удобной точке в Кассандре, Ситонии, Неа Каликратии и других доступных районах Халкидик.",
+        },
+        {
+          question:
+            "Удобен ли прокат авто в Халкидиках для поездок между Кассандрой и Ситонией?",
+          answer:
+            "Да. Автомобиль — один из самых удобных способов свободно перемещаться между пляжами, поселками и курортными зонами полуостровов.",
+        },
+        {
+          question:
+            "Что нужно указать для организации выдачи в Халкидиках?",
+          answer:
+            "Укажите при бронировании район или адрес проживания, при необходимости удобную точку встречи и желаемое время, а мы подтвердим детали передачи автомобиля.",
+        },
+      ],
     },
     uk: {
       shortName: "Халкідіки",
@@ -1003,12 +2140,32 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Орендуйте авто в Халкідіках з покриттям по регіону, пляжних зонах і ключових маршрутах до курортів.",
       introText:
-        "Регіональна SEO-сторінка Халкідік об'єднує основний попит і пов'язує підсторінки Ситонії та Кассандри.",
+        "Халкідіки — один із найпопулярніших курортних регіонів Греції, де оренда авто особливо зручна для поїздок між пляжами, селищами та півостровами Кассандра і Ситонія. Natali Cars допоможе швидко організувати прокат авто в Халкідіках для комфортного відпочинку та зручного пересування регіоном.",
       areaServed: ["Неа Каллікратія", "Ситонія", "Кассандра"],
       pickupLocation: "Регіональна точка отримання Халкідіки",
       offerName: "Регіональна пропозиція Халкідіки",
       offerDescription:
         "Отримання авто по регіону для пляжного відпочинку, вілл і сімейних поїздок.",
+      faq: [
+        {
+          question:
+            "Чи можна організувати отримання авто в різних частинах Халкідіків?",
+          answer:
+            "Так. Ми можемо узгодити отримання біля вашого житла або у зручній точці в Кассандрі, Ситонії, Неа Каллікратії та інших доступних районах Халкідіків.",
+        },
+        {
+          question:
+            "Чи зручна оренда авто в Халкідіках для поїздок між Кассандрою та Ситонією?",
+          answer:
+            "Так. Автомобіль — один із найзручніших способів вільно пересуватися між пляжами, селищами та курортними зонами півостровів.",
+        },
+        {
+          question:
+            "Що потрібно вказати для організації отримання в Халкідіках?",
+          answer:
+            "Вкажіть під час бронювання район або адресу проживання, за потреби зручну точку зустрічі та бажаний час, а ми підтвердимо деталі передачі автомобіля.",
+        },
+      ],
     },
     el: {
       shortName: "Χαλκιδική",
@@ -1017,12 +2174,120 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Ενοικιάστε αυτοκίνητο στη Χαλκιδική με κάλυψη σε παραλιακές περιοχές, υπο-περιοχές και βασικές διαδρομές μεταφοράς.",
       introText:
-        "Η περιφερειακή σελίδα Χαλκιδικής συγκεντρώνει τη ζήτηση και συνδέεται με εξειδικευμένες σελίδες για Σιθωνία και Κασσάνδρα.",
+        "Η Χαλκιδική είναι μία από τις πιο δημοφιλείς τουριστικές περιοχές της Ελλάδας, όπου η ενοικίαση αυτοκινήτου είναι ιδιαίτερα βολική για διαδρομές ανάμεσα σε παραλίες, οικισμούς και τις χερσονήσους Κασσάνδρα και Σιθωνία. Η Natali Cars σας βοηθά να οργανώσετε γρήγορα ενοικίαση αυτοκινήτου στη Χαλκιδική για άνετες διακοπές και εύκολες μετακινήσεις σε όλη την περιοχή.",
       areaServed: ["Νέα Καλλικράτεια", "Σιθωνία", "Κασσάνδρα"],
       pickupLocation: "Περιφερειακό σημείο παραλαβής Χαλκιδικής",
       offerName: "Περιφερειακή προσφορά Χαλκιδικής",
       offerDescription:
         "Κάλυψη παραλαβής για παραλίες, βίλες και οικογενειακές διαδρομές σε όλη τη Χαλκιδική.",
+      faq: [
+        {
+          question:
+            "Μπορώ να οργανώσω παραλαβή αυτοκινήτου σε διαφορετικά μέρη της Χαλκιδικής;",
+          answer:
+            "Ναι. Μπορούμε να συντονίσουμε παραλαβή κοντά στο κατάλυμά σας ή σε συμφωνημένο σημείο στην Κασσάνδρα, τη Σιθωνία, τη Νέα Καλλικράτεια και σε άλλες προσβάσιμες περιοχές της Χαλκιδικής.",
+        },
+        {
+          question:
+            "Είναι πρακτική η ενοικίαση αυτοκινήτου στη Χαλκιδική για διαδρομές ανάμεσα στην Κασσάνδρα και τη Σιθωνία;",
+          answer:
+            "Ναι. Το αυτοκίνητο είναι ένας από τους πιο εύκολους τρόπους να μετακινείστε ελεύθερα ανάμεσα σε παραλίες, οικισμούς και τουριστικές περιοχές των χερσονήσων.",
+        },
+        {
+          question:
+            "Τι πρέπει να δώσω για να οργανωθεί η παραλαβή στη Χαλκιδική;",
+          answer:
+            "Στείλτε κατά την κράτηση την περιοχή ή τη διεύθυνση του καταλύματός σας, αν χρειάζεται το σημείο συνάντησης που προτιμάτε και την ώρα που σας εξυπηρετεί, και θα επιβεβαιώσουμε τις λεπτομέρειες παράδοσης.",
+        },
+      ],
+    },
+    de: {
+      faq: [
+        {
+          question:
+            "Kann ich die Fahrzeuguebergabe in verschiedenen Teilen der Chalkidiki arrangieren?",
+          answer:
+            "Ja. Wir koennen die Uebergabe in der Naehe Ihrer Unterkunft oder an einem vereinbarten Punkt in Kassandra, Sithonia, Nea Kallikratia und anderen gut erreichbaren Gebieten der Chalkidiki organisieren.",
+        },
+        {
+          question:
+            "Ist ein Mietwagen in Chalkidiki praktisch fuer Fahrten zwischen Kassandra und Sithonia?",
+          answer:
+            "Ja. Ein Auto ist eine der bequemsten Moeglichkeiten, sich frei zwischen Straenden, Orten und Feriengebieten der Halbinseln zu bewegen.",
+        },
+        {
+          question:
+            "Welche Angaben brauche ich, um die Uebergabe in Chalkidiki zu organisieren?",
+          answer:
+            "Senden Sie bei der Buchung den Bereich oder die Adresse Ihrer Unterkunft, falls noetig Ihren bevorzugten Treffpunkt sowie die gewuenschte Uhrzeit, und wir bestaetigen die Uebergabedetails.",
+        },
+      ],
+    },
+    bg: {
+      faq: [
+        {
+          question:
+            "Мога ли да организирам получаване на кола в различни части на Халкидики?",
+          answer:
+            "Да. Можем да организираме получаване близо до мястото ви за настаняване или на уговорена точка в Касандра, Ситония, Неа Каликратия и други достъпни части на Халкидики.",
+        },
+        {
+          question:
+            "Удобна ли е кола под наем в Халкидики за пътувания между Касандра и Ситония?",
+          answer:
+            "Да. Автомобилът е един от най-удобните начини да се придвижвате свободно между плажове, селища и курортни зони на полуостровите.",
+        },
+        {
+          question:
+            "Какво трябва да посоча, за да организирам получаването в Халкидики?",
+          answer:
+            "Посочете при резервация района или адреса на настаняване, при нужда удобна точка за среща и желания час, а ние ще потвърдим детайлите по предаването.",
+        },
+      ],
+    },
+    ro: {
+      faq: [
+        {
+          question:
+            "Pot organiza preluarea mașinii în diferite părți ale Halkidiki?",
+          answer:
+            "Da. Putem organiza predarea lângă cazarea dvs. sau într-un punct stabilit în Kassandra, Sithonia, Nea Kallikratia și în alte zone accesibile din Halkidiki.",
+        },
+        {
+          question:
+            "Este convenabilă închirierea auto în Halkidiki pentru drumuri între Kassandra și Sithonia?",
+          answer:
+            "Da. Mașina este una dintre cele mai comode variante pentru a vă deplasa liber între plaje, localități și zone turistice de pe peninsule.",
+        },
+        {
+          question:
+            "Ce trebuie să transmit pentru a organiza preluarea în Halkidiki?",
+          answer:
+            "Trimiteți la rezervare zona sau adresa cazării, dacă este nevoie punctul de întâlnire preferat și ora dorită, iar noi vă confirmăm detaliile predării.",
+        },
+      ],
+    },
+    sr: {
+      faq: [
+        {
+          question:
+            "Могу ли да организујем преузимање аута у различитим деловима Халкидикија?",
+          answer:
+            "Да. Можемо организовати преузимање близу вашег смештаја или на договореној тачки у Касандри, Ситонији, Неа Каликратији и другим доступним деловима Халкидикија.",
+        },
+        {
+          question:
+            "Да ли је изнајмљивање аута у Халкидикију практично за вожњу између Касандре и Ситоније?",
+          answer:
+            "Да. Ауто је један од најпрактичнијих начина да се слободно крећете између плажа, места и туристичких зона полуострва.",
+        },
+        {
+          question:
+            "Шта треба да пошаљем за организацију преузимања у Халкидикију?",
+          answer:
+            "Пошаљите при резервацији област или адресу смештаја, по потреби жељену тачку састанка и време које вам одговара, а ми ћемо потврдити детаље примопредаје.",
+        },
+      ],
     },
   },
   [LOCATION_CONTENT_KEYS.SITHONIA]: {
@@ -1150,7 +2415,7 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Rent a car in Nea Kallikratia with convenient pickup near the beach and main road. Ideal for coastal stays and day trips across Halkidiki.",
       introText:
-        "Nea Kallikratia is a popular coastal town on the way to Halkidiki. This page helps you arrange car rental with pickup suited to your accommodation.",
+        "Nea Kallikratia is a popular coastal town on the way to Halkidiki.",
       areaServed: ["Nea Kallikratia Beach", "Central Nea Kallikratia"],
       pickupLocation: "Nea Kallikratia Pickup Point",
       offerName: "Nea Kallikratia Car Hire",
@@ -1178,7 +2443,7 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Аренда авто в Неа Калликратии с удобной выдачей у пляжа и главной дороги. Идеально для отдыха на побережье и поездок по Халкидикам.",
       introText:
-        "Неа Калликратия — популярный прибрежный город на пути в Халкидики. Эта страница поможет организовать прокат авто с выдачей у вашего жилья.",
+        "Неа Калликратия — популярный прибрежный город на пути в Халкидики.",
       areaServed: ["Пляж Неа Калликратия", "Центр Неа Калликратии"],
       pickupLocation: "Точка выдачи в Неа Калликратии",
       offerName: "Прокат авто в Неа Калликратии",
@@ -1186,6 +2451,8 @@ const locationContentByKeyRaw: Record<
       pickupGuidance:
         "Выдачу в Неа Калликратии обычно организуют у вашего жилья или у договорной точки на прибрежной трассе. Уточните место при бронировании для удобной передачи авто.",
       nearbyPlaces: ["Салоники (город)", "Неа Муданья (порт)", "Полуостров Ситония"],
+      distanceToThessalonikiText:
+        "Неа Калликратия расположена примерно в 35 км от Салоник и примерно в 25 км от аэропорта Салоники (SKG).",
       faq: [
         { question: "Можно ли доставить авто к отелю в Неа Калликратии?", answer: "Да. Мы организуем выдачу у отеля или апартаментов; укажите адрес при бронировании." },
         { question: "Удобна ли Неа Калликратия как база для поездок по Халкидикам?", answer: "Да. Город на основной трассе в полуостров, до Ситонии и Кассандры легко доехать на авто." },
@@ -1199,7 +2466,7 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Оренда авто в Неа Каллікратії з зручною видачею біля пляжу та головної дороги. Ідеально для відпочинку на узбережжі та поїздок по Халкідіках.",
       introText:
-        "Неа Каллікратія — популярне прибережне місто на шляху в Халкідіки. Ця сторінка допоможе організувати оренду авто з видачею біля вашого помешкання.",
+        "Неа Каллікратія — популярне прибережне місто на шляху в Халкідіки.",
       areaServed: ["Пляж Неа Каллікратія", "Центр Неа Каллікратії"],
       pickupLocation: "Точка отримання в Неа Каллікратії",
       offerName: "Оренда авто в Неа Каллікратії",
@@ -1207,6 +2474,8 @@ const locationContentByKeyRaw: Record<
       pickupGuidance:
         "Видачу в Неа Каллікратії зазвичай організовують біля помешкання або узгодженої точки на прибережній трасі. Уточніть місце при бронюванні для зручної передачі авто.",
       nearbyPlaces: ["Салоніки (місто)", "Неа Муданія (порт)", "Півострів Сітонія"],
+      distanceToThessalonikiText:
+        "Неа Каллікратія розташована приблизно за 35 км від Салонік і приблизно за 25 км від аеропорту Салоніки (SKG).",
       faq: [
         { question: "Чи можна доставити авто до готелю в Неа Каллікратії?", answer: "Так. Ми організуємо видачу біля готелю або апартаментів; вкажіть адресу при бронюванні." },
         { question: "Чи зручна Неа Каллікратія як база для поїздок по Халкідіках?", answer: "Так. Місто на основній трасі півострова, до Сітонії та Кассандри легко доїхати авто." },
@@ -1220,7 +2489,7 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Ενοικιάστε αυτοκίνητο στη Νέα Καλλικράτεια με βολική παραλαβή κοντά στην παραλία και τον κεντρικό δρόμο. Ιδανικό για παραθαλάσσια διαμονή και εκδρομές στη Χαλκιδική.",
       introText:
-        "Η Νέα Καλλικράτεια είναι δημοφιλής παραθαλάσσια πόλη στο δρόμο προς τη Χαλκιδική. Αυτή η σελίδα σας βοηθά να οργανώσετε ενοικίαση αυτοκινήτου με παραλαβή κατάλληλη για το κατάλυμά σας.",
+        "Η Νέα Καλλικράτεια είναι δημοφιλής παραθαλάσσια πόλη στο δρόμο προς τη Χαλκιδική.",
       areaServed: ["Παραλία Νέας Καλλικράτειας", "Κέντρο Νέας Καλλικράτειας"],
       pickupLocation: "Σημείο παραλαβής Νέα Καλλικράτεια",
       offerName: "Ενοικίαση αυτοκινήτου Νέα Καλλικράτεια",
@@ -1228,6 +2497,8 @@ const locationContentByKeyRaw: Record<
       pickupGuidance:
         "Η παραλαβή στη Νέα Καλλικράτεια συνήθως κανονίζεται κοντά στο κατάλυμά σας ή σε συμφωνημένο σημείο στον παραλιακό δρόμο. Επιβεβαιώστε το ακριβές σημείο κατά την κράτηση.",
       nearbyPlaces: ["Θεσσαλονίκη (πόλη)", "Νέα Μουδανιά (λιμάνι)", "Χερσόνησος Σιθωνία"],
+      distanceToThessalonikiText:
+        "Η Νέα Καλλικράτεια βρίσκεται περίπου 35 χλμ. από τη Θεσσαλονίκη και περίπου 25 χλμ. από το αεροδρόμιο Θεσσαλονίκης (SKG).",
       faq: [
         { question: "Μπορώ να παραλάβω αυτοκίνητο στο ξενοδοχείο μου στη Νέα Καλλικράτεια;", answer: "Ναι. Συντονίζουμε παραλαβή στο ξενοδοχείο ή τα διαμερίσματά σας· επιβεβαιώστε τη διεύθυνση κατά την κράτηση." },
         { question: "Είναι η Νέα Καλλικράτεια καλή βάση για εξερεύνηση της Χαλκιδικής;", answer: "Ναι. Βρίσκεται στον κύριο δρόμο της χερσονήσου· η Σιθωνία και η Κασσάνδρα είναι εύκολα προσβάσιμες με αυτοκίνητο." },
@@ -1241,7 +2512,7 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Mieten Sie ein Auto in Nea Kallikratia mit Abholung am Strand und an der Hauptstraße. Ideal für den Küstenurlaub und Ausflüge in die Chalkidiki.",
       introText:
-        "Nea Kallikratia ist ein beliebter Küstenort auf dem Weg in die Chalkidiki. Diese Seite hilft Ihnen, einen Mietwagen mit Abholung passend zu Ihrer Unterkunft zu buchen.",
+        "Nea Kallikratia ist ein beliebter Küstenort auf dem Weg in die Chalkidiki.",
       areaServed: ["Strand Nea Kallikratia", "Zentrum Nea Kallikratia"],
       pickupLocation: "Abholpunkt Nea Kallikratia",
       offerName: "Mietwagen Nea Kallikratia",
@@ -1249,6 +2520,8 @@ const locationContentByKeyRaw: Record<
       pickupGuidance:
         "Die Abholung in Nea Kallikratia erfolgt in der Regel in der Nähe Ihrer Unterkunft oder an einem vereinbarten Punkt an der Küstenstraße. Bestätigen Sie den genauen Ort bei der Buchung.",
       nearbyPlaces: ["Thessaloniki (Stadt)", "Nea Moudania (Hafen)", "Halbinsel Sithonia"],
+      distanceToThessalonikiText:
+        "Nea Kallikratia liegt etwa 35 km von Thessaloniki und etwa 25 km vom Flughafen Thessaloniki (SKG) entfernt.",
       faq: [
         { question: "Kann ich ein Auto zu meinem Hotel in Nea Kallikratia geliefert bekommen?", answer: "Ja. Wir koordinieren die Abholung am oder in der Nähe Ihres Hotels oder Ihrer Ferienwohnung; bestätigen Sie die Adresse bei der Buchung." },
         { question: "Eignet sich Nea Kallikratia als Basis für die Chalkidiki?", answer: "Ja. Der Ort liegt an der Hauptroute zur Halbinsel; Sithonia und Kassandra sind mit dem Auto gut erreichbar." },
@@ -1262,7 +2535,7 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Наем на кола в Неа Каликратия с удобна получаване до плажа и главния път. Идеално за престой на брега и разходки из Халкидики.",
       introText:
-        "Неа Каликратия е популярен крайбрежен град по пътя към Халкидики. Тази страница ви помага да организирате наем на кола с получаване подходящо за вашето настаняване.",
+        "Неа Каликратия е популярен крайбрежен град по пътя към Халкидики.",
       areaServed: ["Плаж Неа Каликратия", "Център Неа Каликратия"],
       pickupLocation: "Място за получаване Неа Каликратия",
       offerName: "Наем на кола Неа Каликратия",
@@ -1270,6 +2543,8 @@ const locationContentByKeyRaw: Record<
       pickupGuidance:
         "Получаването в Неа Каликратия обикновено се организира близо до настаняването ви или до договорена точка на крайбрежния път. Потвърдете точното място при резервация.",
       nearbyPlaces: ["Солун (град)", "Неа Мудания (пристанище)", "Полуостров Ситония"],
+      distanceToThessalonikiText:
+        "Неа Каликратия се намира на около 35 км от Солун и на около 25 км от летище Солун (SKG).",
       faq: [
         { question: "Мога ли да получа кола до хотела в Неа Каликратия?", answer: "Да. Координаираме получаване в или близо до хотела/апартамента; потвърдете адреса при резервация." },
         { question: "Подходяща ли е Неа Каликратия като база за Халкидики?", answer: "Да. Градът е на главния път към полуострова; Ситония и Касандра са лесно достъпни с кола." },
@@ -1283,7 +2558,7 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Închiriați mașină în Nea Kallikratia cu preluare convenabilă lângă plajă și drumul principal. Ideal pentru sejur la mare și excursii în Halkidiki.",
       introText:
-        "Nea Kallikratia este un oraș litoral popular pe drumul spre Halkidiki. Această pagină vă ajută să organizați închiriere auto cu preluare potrivită cazării dumneavoastră.",
+        "Nea Kallikratia este un oraș litoral popular pe drumul spre Halkidiki.",
       areaServed: ["Plaja Nea Kallikratia", "Centrul Nea Kallikratia"],
       pickupLocation: "Punct de preluare Nea Kallikratia",
       offerName: "Închirieri auto Nea Kallikratia",
@@ -1291,6 +2566,8 @@ const locationContentByKeyRaw: Record<
       pickupGuidance:
         "Preluarea în Nea Kallikratia se organizează de obicei lângă cazare sau la un punct convenit pe drumul litoral. Confirmați locația exactă la rezervare.",
       nearbyPlaces: ["Thessaloniki (oraș)", "Nea Moudania (port)", "Peninsula Sithonia"],
+      distanceToThessalonikiText:
+        "Nea Kallikratia se află la aproximativ 35 km de Salonic și la aproximativ 25 km de Aeroportul Salonic (SKG).",
       faq: [
         { question: "Pot primi mașina la hotel în Nea Kallikratia?", answer: "Da. Coordonăm preluarea la sau lângă hotel/apartament; confirmați adresa la rezervare." },
         { question: "Este Nea Kallikratia o bază bună pentru Halkidiki?", answer: "Da. Se află pe traseul principal al peninsulei; Sithonia și Kassandra sunt ușor accesibile cu mașina." },
@@ -1304,7 +2581,7 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Изнајмите ауто у Неа Каликратији са погодном преузимањем код плаже и главног пута. Идеално за одмор на обали и излете по Халкидикију.",
       introText:
-        "Неа Каликратија је популарно приобално место на путу ка Халкидикију. Ова страница вам помаже да организујете изнајмљивање аута са преузимањем прилагођеним вашем смештају.",
+        "Неа Каликратија је популарно приобално место на путу ка Халкидикију.",
       areaServed: ["Плажа Неа Каликратија", "Центар Неа Каликратија"],
       pickupLocation: "Место преузимања Неа Каликратија",
       offerName: "Изнајмљивање аута Неа Каликратија",
@@ -1312,6 +2589,8 @@ const locationContentByKeyRaw: Record<
       pickupGuidance:
         "Преузимање у Неа Каликратији обично се организује близу смештаја или на договореној тачки на обалском путу. Потврдите тачно место при резервацији.",
       nearbyPlaces: ["Солун (град)", "Неа Муданија (лука)", "Полуострво Ситонија"],
+      distanceToThessalonikiText:
+        "Nea Kalikratija se nalazi na oko 35 km od Soluna i na oko 25 km od aerodroma Solun (SKG).",
       faq: [
         { question: "Могу ли добити ауто испоручено до хотела у Неа Каликратији?", answer: "Да. Координишемо преузимање у или близу хотела/апартмана; потврдите адресу при резервацији." },
         { question: "Да ли је Неа Каликратија добра база за истраживање Халкидикија?", answer: "Да. Налази се на главном путу полуострва; Ситонија и Касандра су лако доступне аутом." },
@@ -1419,7 +2698,7 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Book a car in Kallithea with pickup for resorts and beaches. Explore Kassandra and the west coast with flexible rental.",
       introText:
-        "Kallithea is a popular resort on Kassandra with a lively strip and good beaches. Arrange car rental with pickup that fits your stay.",
+        "Kallithea is a popular resort on Kassandra with a lively strip and good beaches.",
       areaServed: ["Kallithea Beach", "Kallithea Strip", "Resort Area"],
       pickupLocation: "Kallithea Pickup Point",
       offerName: "Kallithea Car Hire",
@@ -1511,7 +2790,7 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Book a car in Afitos with pickup for the old village and beach. Explore traditional Kassandra and the coast.",
       introText:
-        "Afitos is a picturesque village on Kassandra with stone houses and a cliff-top setting. Arrange rental with pickup that fits your stay.",
+        "Afitos is a picturesque village on Kassandra with stone houses and a cliff-top setting.",
       areaServed: ["Afitos Village", "Afitos Beach", "Kassandra West"],
       pickupLocation: "Afitos Pickup Point",
       offerName: "Afitos Car Hire",
@@ -1580,7 +2859,7 @@ const locationContentByKeyRaw: Record<
       seoDescription:
         "Rent a car in Kassandria town with pickup for the centre and nearby resorts. Explore the peninsula from a central base.",
       introText:
-        "Kassandria is the main town in the middle of Kassandra peninsula. This page helps you arrange rental with pickup in town or at your stay.",
+        "Kassandria is the main town in the middle of Kassandra peninsula.",
       areaServed: ["Kassandria Town", "Central Kassandra", "Resort Access"],
       pickupLocation: "Kassandria Pickup Point",
       offerName: "Kassandria Car Hire",
@@ -1761,7 +3040,13 @@ const locationContentByKeyRaw: Record<
 export const locationContentByKey = Object.fromEntries(
   Object.entries(locationContentByKeyRaw).map(([contentKey, localizedValues]) => [
     contentKey,
-    expandLocationContentRecord(localizedValues),
+    applyIntroTextOverrides(
+      contentKey as LocationContentKey,
+      applyDistanceTextOverrides(
+        contentKey as LocationContentKey,
+        expandLocationContentRecord(localizedValues)
+      )
+    ),
   ])
 ) as Record<LocationContentKey, Record<SupportedLocale, LocationSeoContent>>;
 
@@ -1795,7 +3080,7 @@ export const locationSeoRepo: LocationSeoRepoItem[] = [
       en: "car-rental-thessaloniki-airport",
       ru: "arenda-avto-aeroport-saloniki",
       uk: "orenda-avto-aeroport-saloniky",
-      el: "enoikiasi-autokinitou-aerodromio-thessaloniki",
+      el: "enoikiasi-autokinitou-aerodromio-thessalonikis",
       de: "mietwagen-thessaloniki-flughafen",
       bg: "koli-pod-naem-letishte-solun",
       ro: "inchirieri-auto-aeroport-salonic",
@@ -1891,7 +3176,7 @@ export const locationSeoRepo: LocationSeoRepoItem[] = [
       en: "car-rental-nea-kallikratia",
       ru: "arenda-avto-nea-kallikratia",
       uk: "orenda-avto-nea-kallikratia",
-      el: "enoikiasi-nea-kallikratia",
+      el: "enoikiasi-autokinitou-nea-kallikratia",
       de: "mietwagen-nea-kallikratia",
       bg: "koli-pod-naem-nea-kallikratia",
       ro: "inchirieri-auto-nea-kallikratia",
@@ -2158,14 +3443,14 @@ export const locationSeoRepo: LocationSeoRepoItem[] = [
     parentId: LOCATION_IDS.HALKIDIKI,
     childIds: [],
     slugByLocale: {
-      en: "car-rental-agios-nikolaos-halkidiki",
-      ru: "arenda-avto-agios-nikolaos-halkidiki",
-      uk: "orenda-avto-agios-nikolaos-halkidiki",
-      el: "enoikiasi-agios-nikolaos-halkidiki",
-      de: "mietwagen-agios-nikolaos-halkidiki",
-      bg: "koli-pod-naem-agios-nikolaos-halkidiki",
-      ro: "inchirieri-auto-agios-nikolaos-halkidiki",
-      sr: "rent-a-car-agios-nikolaos-halkidiki",
+      en: "car-rental-agios-nikolaos",
+      ru: "arenda-avto-agios-nikolaos",
+      uk: "orenda-avto-agios-nikolaos",
+      el: "enoikiasi-agios-nikolaos",
+      de: "mietwagen-agios-nikolaos",
+      bg: "koli-pod-naem-agios-nikolaos",
+      ro: "inchirieri-auto-agios-nikolaos",
+      sr: "rent-a-car-agios-nikolaos",
     },
   },
   {

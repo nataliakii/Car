@@ -1,26 +1,24 @@
 import { notFound, permanentRedirect, redirect } from "next/navigation";
-import Link from "next/link";
 import { Box } from "@mui/material";
 import Feed from "@app/components/Feed";
-import CarGrid from "@app/components/CarGrid";
 import JsonLdScript from "@app/components/seo/JsonLdScript";
 import SeoHeroSliderCard from "@app/components/seo/SeoHeroSliderCard";
 import {
   buildHubAndLocationLinks,
-  getCarPath,
   getLocaleDictionary,
   getHubSeo,
-  getLocationById,
   getLocationByPath,
-  getLocationBySeoSlug,
   getLocationPathFromLocation,
   getLocationBreadcrumbChain,
   getLocationHierarchyRouteParams,
   getAllLocationsForLocale,
   getHomepageSearchUrl,
+  getLocationHeroSubtitle,
   getLocationPageContent,
   isSupportedLocale,
   normalizeLocale,
+  resolveLocationFromSingleSegmentSlug,
+  shouldHideDistanceToThessalonikiBlock,
 } from "@domain/locationSeo/locationSeoService";
 import { SUPPORTED_LOCALES, LOCATION_IDS } from "@domain/locationSeo/locationSeoKeys";
 import {
@@ -39,7 +37,6 @@ import {
 } from "@/services/seo/airportPrioritySeo";
 import { buildLocationMetadata, buildLocationsIndexMetadata } from "@/services/seo/metadataBuilder";
 import {
-  SeoBreadcrumbNav,
   SeoFaqBlock,
   SeoIntroBlock,
   SeoLinksBlock,
@@ -48,21 +45,21 @@ import {
   SeoTipsBlock,
   SeoWhyRentBlock,
   SeoDistanceTableBlock,
-  SeoMapBlock,
 } from "@app/components/seo/SeoContentBlocks";
-import { getLocationPathSegments } from "@domain/locationSeo/locationHierarchy";
 import {
-  CAR_CATEGORIES,
   SEO_LOCATIONS,
   getLocationSeoSlug,
-  getResolvedCategoryContent,
-  getSeoPagePath,
-  buildProgrammaticSlug,
-  BROWSE_BY_CATEGORY_IDS,
-  POPULAR_CARS_LIMIT,
 } from "@domain/seoPages/seoPageRegistry";
 
 const PILLAR_LOCATION_IDS = [LOCATION_IDS.HALKIDIKI, LOCATION_IDS.THESSALONIKI_AIRPORT, LOCATION_IDS.NEA_KALLIKRATIA];
+const LOCATION_HERO_BUTTON_SX = {
+  background: "#c40000",
+  padding: "16px 32px",
+  borderRadius: "10px",
+  fontWeight: 600,
+  letterSpacing: "0.5px",
+  boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+};
 
 function getPublicCars(cars) {
   return (cars || []).filter(
@@ -109,7 +106,7 @@ export async function generateMetadata({ params }) {
   }
   // Single segment: resolve by centralized SEO slug first (seoSlugByLocale)
   if (pathArray.length === 1) {
-    const locationBySlug = getLocationBySeoSlug(locale, pathArray[0]);
+    const locationBySlug = resolveLocationFromSingleSegmentSlug(locale, pathArray[0]);
     if (locationBySlug) {
       return buildLocationMetadata(locationBySlug);
     }
@@ -167,7 +164,14 @@ export default async function LocationHierarchyPage({ params }) {
   // Single segment: resolve only via centralized SEO slug (seoSlugByLocale)
   if (pathArray.length === 1) {
     const slug = pathArray[0];
-    location = getLocationBySeoSlug(locale, slug);
+    location = resolveLocationFromSingleSegmentSlug(locale, slug);
+    if (location) {
+      const canonicalPath = getLocationPathFromLocation(locale, location);
+      const currentPath = `/${locale}/locations/${slug}`;
+      if (canonicalPath !== currentPath) {
+        permanentRedirect(canonicalPath);
+      }
+    }
     // Legacy: single-segment hierarchy ID (e.g. /en/locations/halkidiki) → redirect to canonical SEO URL
     if (!location) {
       location = getLocationByPath(locale, pathArray);
@@ -203,23 +207,6 @@ export default async function LocationHierarchyPage({ params }) {
   const dictionary = getLocaleDictionary(locale);
   const isPillar = PILLAR_LOCATION_IDS.includes(location.id);
 
-  // Resolve link target for category/programmatic pages: current location or nearest SEO ancestor.
-  const matchedSeoLoc = SEO_LOCATIONS.find((sl) => sl.locationId === location.id);
-  const linkTargetSeoLoc =
-    matchedSeoLoc ??
-    (() => {
-      const segments = getLocationPathSegments(location.id);
-      if (!segments?.length) return null;
-      const rootId = segments[0];
-      return SEO_LOCATIONS.find((sl) => sl.locationId === rootId) ?? null;
-    })();
-  const linkTarget = linkTargetSeoLoc
-    ? {
-        locSlug: getLocationSeoSlug(linkTargetSeoLoc.locationId, locale),
-        locName: linkTargetSeoLoc.nameByLocale[locale] || linkTargetSeoLoc.nameByLocale.en,
-      }
-    : null;
-
   let allCars = [];
   let ordersData = null;
   let companyData = null;
@@ -233,9 +220,6 @@ export default async function LocationHierarchyPage({ params }) {
     allCars = carsData || [];
     ordersData = orders;
     companyData = company;
-  } else if (linkTarget) {
-    const carsData = await getCars().catch(() => []);
-    allCars = carsData || [];
   }
   const publicCars = getPublicCars(allCars);
 
@@ -252,6 +236,9 @@ export default async function LocationHierarchyPage({ params }) {
   const prioritySeo = isPriorityAirportLocation(location)
     ? getAirportPrioritySeo(locale)
     : null;
+  const isAirport = isPriorityAirportLocation(location);
+  const hideDistanceBlock = shouldHideDistanceToThessalonikiBlock(location.id);
+  const faqItems = isAirport ? prioritySeo?.faqItems || [] : pageContent.faq || [];
   const prioritizedTitle = prioritySeo?.h1 || location.h1;
   const prioritizedIntroText = prioritySeo?.introText || pageContent.intro;
 
@@ -259,42 +246,27 @@ export default async function LocationHierarchyPage({ params }) {
   const locationHeroImage = getLocationHeroImage(location.id);
   const heroImages = [locationHeroImage];
   const distanceText =
-    pageContent.distanceToThessaloniki || getLocationDistanceText(location.id) || "";
+    pageContent.distanceToThessaloniki ||
+    location.distanceToThessalonikiText ||
+    getLocationDistanceText(location.id, locale, location.shortName) ||
+    "";
   const ctaHref =
     location.canonicalSlug && typeof getHomepageSearchUrl === "function"
       ? getHomepageSearchUrl(locale, location.canonicalSlug)
       : locationLinks.hubPath;
   const ctaLabel = links.locationHeroCtaLabel;
-  const heroParagraphs = prioritySeo?.heroSubtitle
-    ? [prioritySeo.heroSubtitle]
+  const heroSubtitle = prioritySeo?.heroSubtitle || getLocationHeroSubtitle(locale, location);
+  const heroParagraphs = heroSubtitle
+    ? [heroSubtitle]
     : prioritizedIntroText
       ? [prioritizedIntroText]
       : [];
 
   const breadcrumbItems = getLocationBreadcrumbChain(locale, location);
-  const faqJsonLd = buildFaqJsonLd(pageContent.faq || []);
+  const faqJsonLd = buildFaqJsonLd(faqItems);
   const breadcrumbJsonLd = buildBreadcrumbJsonLd(
     breadcrumbItems.map((item) => ({ name: item.label, url: toAbsoluteUrl(item.href) }))
   );
-
-  const halkidikiLocation = getLocationById(locale, LOCATION_IDS.HALKIDIKI);
-  const internalLinks = [];
-  if (halkidikiLocation) {
-    internalLinks.push({
-      href: getLocationPathFromLocation(locale, halkidikiLocation),
-      label: halkidikiLocation.h1 || "Car rental in Halkidiki",
-    });
-  }
-  internalLinks.push({
-    href: getSeoPagePath(locale, "automatic-car-rental-halkidiki"),
-    label: dictionary.links?.automaticCarRentalHalkidiki ?? "Automatic car rental in Halkidiki",
-  });
-  internalLinks.push({
-    href: `/${locale}/cars`,
-    label: dictionary.links?.carsCatalogue ?? "Cars catalogue",
-  });
-
-  const isAirport = isPriorityAirportLocation(location);
 
   return (
     <Feed
@@ -312,6 +284,14 @@ export default async function LocationHierarchyPage({ params }) {
         ctaHref={ctaHref}
         ctaLabel={ctaLabel}
         fullBleedUnderNav
+        disableImageOverlays
+        ctaPlacement="bottomRight"
+        preserveTitleCase
+        stretchContentToEdge
+        ctaSx={LOCATION_HERO_BUTTON_SX}
+        enableTextShadow
+        heroBenefits={isAirport ? prioritySeo?.quickBenefits : []}
+        hideSecondaryContentOnPortraitPhone={Boolean(heroSubtitle)}
       />
       <Box
         component="main"
@@ -334,15 +314,6 @@ export default async function LocationHierarchyPage({ params }) {
               data={breadcrumbJsonLd}
             />
           )}
-          <SeoBreadcrumbNav items={breadcrumbItems} />
-
-          {/* Temporarily disabled until car availability UX is redesigned. */}
-          {/* {isPillar && publicCars.length > 0 && (
-            <section style={{ maxWidth: 980, margin: "0 auto", padding: "24px 16px 8px" }}>
-              <h2 style={{ marginBottom: 16 }}>{dictionary.links.locationToCarsTitle}</h2>
-              <CarGrid />
-            </section>
-          )} */}
 
           {/* 1. Intro (first paragraph; remaining paras = main info if no mainInfoText) */}
           {(() => {
@@ -351,7 +322,12 @@ export default async function LocationHierarchyPage({ params }) {
               : [];
             const firstPara = introParas.length > 0 ? introParas[0] : prioritizedIntroText;
             return (
-              <SeoIntroBlock title={prioritizedTitle} introText={firstPara} skipTitle />
+              <SeoIntroBlock
+                title={prioritizedTitle}
+                introText={firstPara}
+                skipTitle
+                inlineLink={{ word: "онлайн", href: `/${locale}/cars` }}
+              />
             );
           })()}
 
@@ -387,7 +363,7 @@ export default async function LocationHierarchyPage({ params }) {
           )}
 
           {/* 3. Distance to Thessaloniki */}
-          {distanceText && (
+          {distanceText && !hideDistanceBlock && (
             <section
               style={{
                 maxWidth: 980,
@@ -449,79 +425,12 @@ export default async function LocationHierarchyPage({ params }) {
             <SeoDistanceTableBlock
               title={prioritySeo.distanceTableTitle}
               rows={prioritySeo.distanceTableRows}
-            />
-          )}
-
-          {isAirport && prioritySeo?.mapSectionTitle && (
-            <SeoMapBlock
-              title={prioritySeo.mapSectionTitle}
-              mapUrl={prioritySeo.mapUrl}
-              mapEmbedHtml={prioritySeo.mapEmbedHtml}
+              hideHeader
             />
           )}
 
           {/* 7. FAQ */}
-          <SeoFaqBlock title={links.localFaqTitle} faq={pageContent.faq} />
-
-          {/* 8. Cars list (text + links, no CarGrid) */}
-          {publicCars.length > 0 && (
-            <section style={{ maxWidth: 980, margin: "0 auto", padding: "16px 16px 24px" }}>
-              <h2 style={{ marginBottom: 12, fontSize: "1.25rem", fontWeight: 600 }}>
-                Available cars in this location
-              </h2>
-              <Box
-                component="ul"
-                sx={{
-                  margin: 0,
-                  padding: 2,
-                  listStyle: "none",
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
-                  bgcolor: "background.paper",
-                  "& a": { color: "primary.main", textDecoration: "none" },
-                  "& a:hover": { textDecoration: "underline" },
-                  "& li": { py: 0.75, fontSize: "1rem", lineHeight: 1.5 },
-                }}
-              >
-                {publicCars.map((car) => (
-                  <Box component="li" key={car.slug}>
-                    <Link href={getCarPath(locale, car.slug)}>{car.model || car.slug}</Link>
-                  </Box>
-                ))}
-              </Box>
-            </section>
-          )}
-
-          {linkTarget && (
-            <>
-              <SeoLinksBlock
-                title="Browse by category"
-                links={BROWSE_BY_CATEGORY_IDS.map((id) => {
-                  const cat = CAR_CATEGORIES.find((c) => c.id === id);
-                  const content = cat ? getResolvedCategoryContent(cat.id, locale, linkTarget.locName) : null;
-                  return {
-                    href: getSeoPagePath(locale, `${id}-car-rental-${linkTarget.locSlug}`),
-                    label: content?.h1 ?? `${id} car rental in ${linkTarget.locName}`,
-                  };
-                })}
-              />
-              <SeoLinksBlock
-                title="Popular cars in this location"
-                links={publicCars.slice(0, POPULAR_CARS_LIMIT).map((car) => ({
-                  href: getSeoPagePath(locale, buildProgrammaticSlug(car.slug, linkTarget.locSlug)),
-                  label: `${car.model || car.slug} rental in ${linkTarget.locName}`,
-                }))}
-              />
-            </>
-          )}
-
-          {internalLinks.length > 0 && (
-            <SeoLinksBlock
-              title={dictionary.links?.exploreMore ?? "Explore more"}
-              links={internalLinks}
-            />
-          )}
+          <SeoFaqBlock title={links.localFaqTitle} faq={faqItems} />
         </Box>
       </Box>
     </Feed>

@@ -24,7 +24,6 @@ import {
   TextField,
   Chip,
   Divider,
-  Collapse,
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { useSession, signOut } from "next-auth/react";
@@ -39,26 +38,19 @@ import CloseIcon from "@mui/icons-material/Close";
 import { Slider } from "@mui/material";
 import dynamic from "next/dynamic";
 import {
-  getLocationByAnySlug,
-  getLocationById,
-  getLocationByLocaleAndSlug,
   isSupportedLocale,
   normalizeLocale,
   switchPathLocale,
   withLocalePrefix,
 } from "@domain/locationSeo/locationSeoService";
-import {
-  LOCATION_IDS,
-  LOCATION_ROUTE_SEGMENT,
-} from "@domain/locationSeo/locationSeoKeys";
 import { useNavLocations } from "@app/context/NavLocationsContext";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import {
-  ORDERED_LOCATION_OPTIONS,
   SELECTED_LOCATION_STORAGE_KEY,
 } from "@/domain/orders/locationOptions";
+import { resolveBookingLocationFromPathname } from "@/domain/orders/bookingLocationPathResolver";
+
+const NAVBAR_LOCATIONS_DIVIDER_INDEX = 4;
 
 const LANG_LABELS = {
   en: "English",
@@ -212,7 +204,6 @@ export default function NavBar({
   const locationsButtonRef = useRef(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { locationGroups } = useNavLocations();
-  const [locationsExpandedRegion, setLocationsExpandedRegion] = useState(null);
   const [discountModalOpen, setDiscountModalOpen] = useState(false);
   const [selectedDiscount, setSelectedDiscount] = useState(0);
   const [discountStartDate, setDiscountStartDate] = useState(null);
@@ -275,33 +266,7 @@ export default function NavBar({
   useEffect(() => {
     if (typeof window === "undefined" || !pathname || isAdmin) return;
 
-    const segments = pathname.split("/").filter(Boolean);
-    const localeSegment = segments[0];
-    const routeSegment = segments[1];
-    const locationSlug = segments[2];
-
-    if (
-      !isSupportedLocale(localeSegment) ||
-      routeSegment !== LOCATION_ROUTE_SEGMENT ||
-      !locationSlug
-    ) {
-      return;
-    }
-
-    const locale = normalizeLocale(localeSegment);
-    const location =
-      getLocationByLocaleAndSlug(locale, locationSlug) ||
-      getLocationByAnySlug(locale, locationSlug);
-    if (!location) return;
-
-    const englishLocation = getLocationById("en", location.id);
-    const englishShortName = englishLocation?.shortName || "";
-    const bookingLocation =
-      location.id === LOCATION_IDS.THESSALONIKI_AIRPORT
-        ? "Airport"
-        : ORDERED_LOCATION_OPTIONS.find(
-            (option) => option.toLowerCase() === englishShortName.toLowerCase()
-          );
+    const bookingLocation = resolveBookingLocationFromPathname(pathname);
 
     if (bookingLocation) {
       localStorage.setItem(SELECTED_LOCATION_STORAGE_KEY, bookingLocation);
@@ -343,7 +308,6 @@ export default function NavBar({
 
   const handleLocationsClose = () => {
     setLocationsAnchor(null);
-    setLocationsExpandedRegion(null);
   };
 
   const handleLanguageSelect = (selectedLanguage) => {
@@ -886,85 +850,12 @@ export default function NavBar({
         >
           <Box sx={{ py: 1.5, px: 1 }}>
             <List dense disablePadding>
-              {locationGroups?.map((group) =>
-                group.children?.length ? (
-                  <Fragment key={group.href}>
-                    <ListItem
-                      disablePadding
-                      sx={{ flexWrap: "wrap" }}
-                      secondaryAction={
-                        <IconButton
-                          edge="end"
-                          size="small"
-                          aria-expanded={locationsExpandedRegion === group.href}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setLocationsExpandedRegion((prev) =>
-                              prev === group.href ? null : group.href
-                            );
-                          }}
-                          sx={{ mr: 0.5 }}
-                        >
-                          {locationsExpandedRegion === group.href ? (
-                            <ExpandLessIcon fontSize="small" />
-                          ) : (
-                            <ExpandMoreIcon fontSize="small" />
-                          )}
-                        </IconButton>
-                      }
-                    >
-                      <Link
-                        href={group.href}
-                        onClick={handleLocationsClose}
-                        style={{
-                          textDecoration: "none",
-                          color: "inherit",
-                          flex: 1,
-                          minWidth: 0,
-                          padding: "6px 12px",
-                        }}
-                      >
-                        <ListItemText
-                          primary={group.label}
-                          primaryTypographyProps={{
-                            variant: "body2",
-                            fontWeight: 500,
-                          }}
-                        />
-                      </Link>
-                    </ListItem>
-                    <Collapse
-                      in={locationsExpandedRegion === group.href}
-                      timeout="auto"
-                      unmountOnExit={false}
-                    >
-                      <List dense disablePadding sx={{ pl: 2, pr: 1, pb: 0.5 }}>
-                        {group.children.map((child) => (
-                          <ListItem key={child.href} disablePadding>
-                            <Link
-                              href={child.href}
-                              onClick={handleLocationsClose}
-                              style={{
-                                textDecoration: "none",
-                                color: "inherit",
-                                width: "100%",
-                                padding: "4px 12px",
-                              }}
-                            >
-                              <ListItemText
-                                primary={child.label}
-                                primaryTypographyProps={{
-                                  variant: "body2",
-                                }}
-                              />
-                            </Link>
-                          </ListItem>
-                        ))}
-                      </List>
-                    </Collapse>
-                  </Fragment>
-                ) : (
-                  <ListItem key={group.href} disablePadding>
+              {locationGroups?.map((group, index) => (
+                <Fragment key={group.href}>
+                  {index === NAVBAR_LOCATIONS_DIVIDER_INDEX && (
+                    <Divider sx={{ my: 0.75, borderColor: "common.black" }} />
+                  )}
+                  <ListItem disablePadding>
                     <Link
                       href={group.href}
                       onClick={handleLocationsClose}
@@ -984,8 +875,8 @@ export default function NavBar({
                       />
                     </Link>
                   </ListItem>
-                )
-              )}
+                </Fragment>
+              ))}
             </List>
           </Box>
         </Menu>
@@ -1127,7 +1018,6 @@ export default function NavBar({
         open={drawerOpen}
         onClose={() => {
           setDrawerOpen(false);
-          setLocationsExpandedRegion(null);
         }}
       >
         <Box sx={{ width: 250, p: 2 }}>
@@ -1154,73 +1044,12 @@ export default function NavBar({
                 </ListItem>
                 {locationGroups?.length > 0 && (
                   <>
-                    {locationGroups.map((group) =>
-                      group.children?.length ? (
-                        <Fragment key={group.href}>
-                          <ListItem
-                            sx={{ flexWrap: "wrap" }}
-                            secondaryAction={
-                              <IconButton
-                                edge="end"
-                                size="small"
-                                aria-expanded={
-                                  locationsExpandedRegion === group.href
-                                }
-                                onClick={() =>
-                                  setLocationsExpandedRegion((prev) =>
-                                    prev === group.href ? null : group.href
-                                  )
-                                }
-                              >
-                                {locationsExpandedRegion === group.href ? (
-                                  <ExpandLessIcon fontSize="small" />
-                                ) : (
-                                  <ExpandMoreIcon fontSize="small" />
-                                )}
-                              </IconButton>
-                            }
-                          >
-                            <Link
-                              href={group.href}
-                              onClick={() => setDrawerOpen(false)}
-                              style={{
-                                textDecoration: "none",
-                                color: "inherit",
-                                flex: 1,
-                                paddingLeft: 16,
-                              }}
-                            >
-                              <ListItemText primary={group.label} inset />
-                            </Link>
-                          </ListItem>
-                          <Collapse
-                            in={locationsExpandedRegion === group.href}
-                            timeout="auto"
-                            unmountOnExit={false}
-                          >
-                            <List disablePadding dense>
-                              {group.children.map((child) => (
-                                <ListItem
-                                  key={child.href}
-                                  component={Link}
-                                  href={child.href}
-                                  onClick={() => setDrawerOpen(false)}
-                                  sx={{ pl: 4 }}
-                                >
-                                  <ListItemText
-                                    primary={child.label}
-                                    primaryTypographyProps={{
-                                      variant: "body2",
-                                    }}
-                                  />
-                                </ListItem>
-                              ))}
-                            </List>
-                          </Collapse>
-                        </Fragment>
-                      ) : (
+                    {locationGroups.map((group, index) => (
+                      <Fragment key={group.href}>
+                        {index === NAVBAR_LOCATIONS_DIVIDER_INDEX && (
+                          <Divider sx={{ my: 0.5, borderColor: "common.black" }} />
+                        )}
                         <ListItem
-                          key={group.href}
                           button
                           component={Link}
                           href={group.href}
@@ -1228,8 +1057,8 @@ export default function NavBar({
                         >
                           <ListItemText primary={group.label} inset />
                         </ListItem>
-                      )
-                    )}
+                      </Fragment>
+                    ))}
                   </>
                 )}
                 <ListItem button component={Link} href={termsAliasHref}>

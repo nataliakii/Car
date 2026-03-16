@@ -1,11 +1,60 @@
 import Link from "next/link";
 
-export function SeoIntroBlock({ title, introText, skipTitle }) {
+function renderIntroTextWithInlineLink(introText, inlineLink) {
+  if (
+    typeof introText !== "string" ||
+    !inlineLink?.word ||
+    !inlineLink?.href
+  ) {
+    return introText;
+  }
+
+  const normalizedText = introText.toLocaleLowerCase();
+  const normalizedWord = inlineLink.word.toLocaleLowerCase();
+  const matchIndex = normalizedText.indexOf(normalizedWord);
+
+  if (matchIndex === -1) {
+    return introText;
+  }
+
+  const before = introText.slice(0, matchIndex);
+  const linkedWord = introText.slice(
+    matchIndex,
+    matchIndex + inlineLink.word.length
+  );
+  const after = introText.slice(matchIndex + inlineLink.word.length);
+
+  return (
+    <>
+      {before}
+      <Link
+        href={inlineLink.href}
+        style={{
+          color: "#1a73e8",
+          textDecoration: "none",
+          fontSize: "inherit",
+          fontFamily: "inherit",
+          fontWeight: "inherit",
+          lineHeight: "inherit",
+        }}
+      >
+        {linkedWord}
+      </Link>
+      {after}
+    </>
+  );
+}
+
+export function SeoIntroBlock({ title, introText, skipTitle, inlineLink }) {
   if (!introText && !title) return null;
   return (
     <section style={{ maxWidth: 980, margin: "0 auto", padding: "32px 16px 8px" }}>
       {!skipTitle && title && <h1 style={{ marginBottom: 12 }}>{title}</h1>}
-      {introText && <p style={{ margin: 0, lineHeight: 1.6 }}>{introText}</p>}
+      {introText && (
+        <p style={{ margin: 0, lineHeight: 1.6 }}>
+          {renderIntroTextWithInlineLink(introText, inlineLink)}
+        </p>
+      )}
     </section>
   );
 }
@@ -258,12 +307,12 @@ export function SeoWhyRentBlock({ title, bullets }) {
 }
 
 /** Distance table (e.g. from airport) */
-export function SeoDistanceTableBlock({ title, rows }) {
+export function SeoDistanceTableBlock({ title, rows, hideHeader = false }) {
   if (!rows || rows.length === 0) return null;
 
   return (
     <section style={{ maxWidth: 980, margin: "0 auto", padding: "16px 16px 8px" }}>
-      <h2 style={{ marginBottom: 12 }}>{title}</h2>
+      {title ? <h2 style={{ marginBottom: 12 }}>{title}</h2> : null}
       <div style={{ overflowX: "auto" }}>
         <table
           style={{
@@ -272,12 +321,14 @@ export function SeoDistanceTableBlock({ title, rows }) {
             minWidth: 280,
           }}
         >
-          <thead>
-            <tr style={{ borderBottom: "2px solid #eee" }}>
-              <th style={{ textAlign: "left", padding: "10px 12px", fontWeight: 600 }}>Location</th>
-              <th style={{ textAlign: "right", padding: "10px 12px", fontWeight: 600 }}>Distance</th>
-            </tr>
-          </thead>
+          {!hideHeader && (
+            <thead>
+              <tr style={{ borderBottom: "2px solid #eee" }}>
+                <th style={{ textAlign: "left", padding: "10px 12px", fontWeight: 600 }}>Location</th>
+                <th style={{ textAlign: "right", padding: "10px 12px", fontWeight: 600 }}>Distance</th>
+              </tr>
+            </thead>
+          )}
           <tbody>
             {rows.map((row, i) => (
               <tr key={i} style={{ borderBottom: "1px solid #eee" }}>

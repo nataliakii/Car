@@ -41,16 +41,16 @@ export const SITHONIA_CITY_IDS: readonly LocationId[] = [
   LOCATION_IDS.NEOS_MARMARAS,
   LOCATION_IDS.AGIOS_NIKOLAOS_HALKIDIKI,
   LOCATION_IDS.SARTI,
-  LOCATION_IDS.METAMORFOSI,
-  LOCATION_IDS.ORMILIA,
-  LOCATION_IDS.PETRALONA,
-  LOCATION_IDS.VRASNA,
-  LOCATION_IDS.OLYMPIADA,
 ] as const;
 
 /** Cities directly under Halkidiki (two segments: /locations/halkidiki/[city] — not Sithonia/Kassandra). */
 export const HALKIDIKI_DIRECT_CITY_IDS: readonly LocationId[] = [
   LOCATION_IDS.NEA_MOUDANIA,
+  LOCATION_IDS.METAMORFOSI,
+  LOCATION_IDS.ORMILIA,
+  LOCATION_IDS.PETRALONA,
+  LOCATION_IDS.VRASNA,
+  LOCATION_IDS.OLYMPIADA,
 ] as const;
 
 /** Map: location id -> path segments (e.g. afitos -> ['halkidiki','kassandra','afitos']). */

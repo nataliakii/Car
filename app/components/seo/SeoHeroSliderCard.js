@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Box, Typography, Stack } from "@mui/material";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import Image from "next/image";
 import Link from "next/link";
 import ActionButton from "@/app/components/ui/buttons/ActionButton";
@@ -22,6 +23,14 @@ export default function SeoHeroSliderCard({
   ctaHref,
   ctaLabel,
   fullBleedUnderNav = false,
+  disableImageOverlays = false,
+  ctaPlacement = "inline",
+  preserveTitleCase = false,
+  stretchContentToEdge = false,
+  ctaSx,
+  enableTextShadow = false,
+  heroBenefits = [],
+  hideSecondaryContentOnPortraitPhone = false,
 }) {
   const [isPortraitPhone, setIsPortraitPhone] = useState(false);
 
@@ -73,6 +82,15 @@ export default function SeoHeroSliderCard({
     return () => clearInterval(intervalRef.current);
   }, [images.length]);
 
+  const shouldShowBottomRightCta =
+    ctaPlacement === "bottomRight" && ctaHref && ctaLabel;
+  const hasHeroBenefits = Array.isArray(heroBenefits) && heroBenefits.length > 0;
+  const shouldHideSecondaryContent =
+    hideSecondaryContentOnPortraitPhone && isPortraitPhone;
+  const heroTextShadow = enableTextShadow
+    ? "0 3px 14px rgba(0,0,0,0.65), 0 1px 3px rgba(0,0,0,0.75)"
+    : "none";
+
   return (
     <Box
       component="section"
@@ -105,35 +123,39 @@ export default function SeoHeroSliderCard({
         </Box>
       ))}
 
-      {/* Dark overlay so white text is clearly readable */}
-      <Box
-        sx={{
-          position: "absolute",
-          inset: 0,
-          background: "linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.55))",
-          pointerEvents: "none",
-        }}
-      />
+      {!disableImageOverlays && (
+        <>
+          {/* Dark overlay so white text is clearly readable */}
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.55))",
+              pointerEvents: "none",
+            }}
+          />
 
-      {/* Gradient from right for text area */}
-      <Box
-        sx={(theme) => ({
-          position: "absolute",
-          inset: 0,
-          background: `linear-gradient(270deg, 
-            ${theme.palette.common.black}CC 0%, 
-            ${theme.palette.common.black}88 40%, 
-            transparent 75%)`,
-          pointerEvents: "none",
-        })}
-      />
+          {/* Gradient from right for text area */}
+          <Box
+            sx={(theme) => ({
+              position: "absolute",
+              inset: 0,
+              background: `linear-gradient(270deg, 
+                ${theme.palette.common.black}CC 0%, 
+                ${theme.palette.common.black}88 40%, 
+                transparent 75%)`,
+              pointerEvents: "none",
+            })}
+          />
+        </>
+      )}
 
       {/* CONTENT: CTA above title, then paragraphs (no absolute positioning) */}
       <Box
         sx={{
           position: "relative",
           zIndex: 2,
-          maxWidth: 1200,
+          maxWidth: stretchContentToEdge ? "100%" : 1200,
           mx: "auto",
           px: 3,
           py: { xs: 6, md: 10 },
@@ -144,7 +166,7 @@ export default function SeoHeroSliderCard({
         }}
       >
         <Box sx={{ maxWidth: 680, textAlign: "right" }}>
-          {ctaHref && ctaLabel && (
+          {ctaHref && ctaLabel && ctaPlacement !== "bottomRight" && (
             <Box sx={{ mb: 2 }}>
               <ActionButton
                 component={Link}
@@ -153,6 +175,7 @@ export default function SeoHeroSliderCard({
                 color="primary"
                 variant="contained"
                 size="large"
+                sx={ctaSx}
               />
             </Box>
           )}
@@ -164,30 +187,109 @@ export default function SeoHeroSliderCard({
               lineHeight: 1.2,
               mb: 2,
               color: "common.white",
-              textTransform: "uppercase",
+              textTransform: preserveTitleCase ? "none" : "uppercase",
               letterSpacing: "0.05em",
               fontSize: "clamp(1.5rem, 4vw, 2.5rem)",
+              textShadow: heroTextShadow,
             }}
           >
             {title}
           </Typography>
 
-          {paragraphs.map((p, i) => (
-            <Typography
-              key={i}
-              variant="body1"
+          {!shouldHideSecondaryContent &&
+            paragraphs.map((p, i) => (
+              <Typography
+                key={i}
+                variant="body1"
+                sx={{
+                  opacity: 0.92,
+                  lineHeight: 1.7,
+                  mb: 1.5,
+                  color: "common.white",
+                  textShadow: heroTextShadow,
+                }}
+              >
+                {p}
+              </Typography>
+            ))}
+
+          {!shouldHideSecondaryContent && hasHeroBenefits && (
+            <Box
               sx={{
-                opacity: 0.92,
-                lineHeight: 1.7,
-                mb: 1.5,
-                color: "common.white",
+                mt: { xs: 2, md: 2.5 },
+                ml: "auto",
+                width: { xs: "100%", md: "min(340px, 100%)" },
+                maxWidth: 340,
+                px: { xs: 1.35, md: 1.7 },
+                py: { xs: 1.1, md: 1.4 },
+                borderRadius: { xs: "16px", md: "18px" },
+                background:
+                  "linear-gradient(180deg, rgba(16,22,38,0.32) 0%, rgba(10,14,26,0.20) 100%)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                backdropFilter: "blur(9px)",
+                boxShadow: "0 14px 30px rgba(0,0,0,0.16)",
               }}
             >
-              {p}
-            </Typography>
-          ))}
+              <Stack spacing={{ xs: 0.7, md: 0.85 }}>
+                {heroBenefits.map((item) => (
+                  <Box
+                    key={item}
+                    sx={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      justifyContent: "flex-end",
+                      gap: 0.75,
+                    }}
+                  >
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        color: "common.white",
+                        lineHeight: 1.3,
+                        fontWeight: 500,
+                        fontSize: { xs: "0.9rem", md: "0.98rem" },
+                        textShadow: heroTextShadow,
+                      }}
+                    >
+                      {item}
+                    </Typography>
+                    <CheckCircleRoundedIcon
+                      sx={{
+                        color: "#35c759",
+                        fontSize: { xs: 20, md: 22 },
+                        mt: "1px",
+                        flexShrink: 0,
+                        filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.35))",
+                      }}
+                    />
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          )}
         </Box>
       </Box>
+
+      {shouldShowBottomRightCta && (
+        <Box
+          sx={{
+            position: "absolute",
+            right: { xs: 16, md: 32 },
+            bottom: images.length > 1 ? { xs: 56, md: 72 } : { xs: 24, md: 32 },
+            zIndex: 4,
+          }}
+        >
+          <ActionButton
+            component={Link}
+            href={ctaHref}
+            label={ctaLabel}
+            color="primary"
+            variant="contained"
+            size="large"
+            sx={ctaSx}
+          />
+        </Box>
+      )}
 
       {/* DOTS */}
       {images.length > 1 && (
