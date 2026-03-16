@@ -30,6 +30,7 @@ import {
   buildFaqJsonLd,
   buildBreadcrumbJsonLd,
 } from "@/services/seo/jsonLdBuilder";
+import { getRobotsForPath } from "@/services/seo/indexingPolicy";
 import { toAbsoluteUrl } from "@/services/seo/urlBuilder";
 import { buildHreflangAlternates } from "@/services/seo/hreflangBuilder";
 import {
@@ -117,18 +118,19 @@ export async function generateMetadata({ params }) {
     if (!resolved) return { robots: { index: false, follow: false } };
 
     const alternates = buildHreflangAlternates(getSeoPageAlternates(locale, slug));
+    const pagePath = getSeoPagePath(locale, slug);
 
     return {
       title: resolved.seoTitle,
       description: resolved.seoDescription,
       alternates: {
-        canonical: toAbsoluteUrl(getSeoPagePath(locale, slug)),
+        canonical: toAbsoluteUrl(pagePath),
         languages: alternates,
       },
       openGraph: {
         title: resolved.seoTitle,
         description: resolved.seoDescription,
-        url: toAbsoluteUrl(getSeoPagePath(locale, slug)),
+        url: toAbsoluteUrl(pagePath),
         type: "website",
         siteName: "Natali Cars",
       },
@@ -137,7 +139,7 @@ export async function generateMetadata({ params }) {
         title: resolved.seoTitle,
         description: resolved.seoDescription,
       },
-      robots: { index: true, follow: true },
+      robots: getRobotsForPath(pagePath),
     };
   }
 
@@ -155,7 +157,7 @@ export async function generateMetadata({ params }) {
       alternates: { canonical: toAbsoluteUrl(pagePath), languages: alternates },
       openGraph: { title: resolved.seoTitle, description: resolved.seoDescription, url: toAbsoluteUrl(pagePath), type: "website", siteName: "Natali Cars" },
       twitter: { card: "summary_large_image", title: resolved.seoTitle, description: resolved.seoDescription },
-      robots: { index: true, follow: true },
+      robots: getRobotsForPath(pagePath),
     };
   }
 
@@ -180,7 +182,7 @@ export async function generateMetadata({ params }) {
       },
       openGraph: { title, description, url: toAbsoluteUrl(pagePath), type: "website", siteName: "Natali Cars" },
       twitter: { card: "summary_large_image", title, description },
-      robots: { index: true, follow: true },
+      robots: getRobotsForPath(pagePath),
     };
   }
 

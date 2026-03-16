@@ -30,6 +30,7 @@ import {
   filterCarsByCategory,
   filterCarsByBrand,
 } from "@domain/seoPages/seoPageRegistry";
+import { shouldIndexPath } from "@/services/seo/indexingPolicy";
 
 type SitemapCar = {
   slug?: string;
@@ -283,12 +284,16 @@ export function buildLocalizedSitemap(cars: SitemapCar[] = []): MetadataRoute.Si
     }
   }
 
-  const validation = validateSitemapEntries(entries);
+  const filteredEntries = entries.filter((entry) =>
+    shouldIndexPath(new URL(entry.url).pathname)
+  );
+
+  const validation = validateSitemapEntries(filteredEntries);
   if (validation.duplicateUrls.length > 0) {
     throw new Error(
       `[sitemapBuilder] Duplicate sitemap URLs found: ${validation.duplicateUrls.join(", ")}`
     );
   }
 
-  return entries;
+  return filteredEntries;
 }

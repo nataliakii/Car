@@ -20,6 +20,7 @@ import {
 import type { LocationSeoResolved } from "@domain/locationSeo/types";
 import { getAirportPrioritySeo, isPriorityAirportLocation } from "./airportPrioritySeo";
 import { buildHreflangAlternates } from "./hreflangBuilder";
+import { getRobotsForPath } from "./indexingPolicy";
 import { toAbsoluteUrl } from "./urlBuilder";
 
 const OG_LOCALE_MAP: Record<string, string> = {
@@ -79,9 +80,7 @@ function buildBaseMetadata(input: {
       description: input.description,
       images: [`${seoConfig.baseUrl}/favicon.png`],
     },
-    robots: input.noindex
-      ? { index: false, follow: true }
-      : { index: true, follow: true },
+    robots: getRobotsForPath(input.canonicalPath, Boolean(input.noindex)),
   };
 }
 

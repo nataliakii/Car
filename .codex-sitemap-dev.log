@@ -1,0 +1,15 @@
+
+> car@0.1.0 dev
+> next dev -p 3025
+
+  ▲ Next.js 14.2.30
+  - Local:        http://localhost:3025
+  - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 5.2s
+ ✓ Compiled /middleware in 466ms (79 modules)
+ ○ Compiling /sitemap.xml ...
+ ✓ Compiled /sitemap.xml in 1723ms (92 modules)
+admin-rbac is deprecated. Use orderAccessPolicy + athensTime directly.
+ GET /sitemap.xml 200 in 6305ms

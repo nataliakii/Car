@@ -14,6 +14,7 @@ import { authOptions } from "@lib/authOptions";
 import { getCars, getCompany, getActiveOrders } from "@/domain/services";
 import { SeoLinksBlock, SeoIntroBlock } from "@app/components/seo/SeoContentBlocks";
 import { buildHreflangAlternates } from "@/services/seo/hreflangBuilder";
+import { getRobotsForPath } from "@/services/seo/indexingPolicy";
 import { toAbsoluteUrl } from "@/services/seo/urlBuilder";
 
 function getPublicCars(cars) {
@@ -45,7 +46,7 @@ export async function generateMetadata({ params }) {
       languages: buildHreflangAlternates(CARS_INDEX_ALTERNATES),
     },
     openGraph: { title, description },
-    robots: { index: true, follow: true },
+    robots: getRobotsForPath(path),
   };
 }
 
