@@ -285,7 +285,6 @@ export default async function LocationHierarchyPage({ params }) {
         ctaHref={ctaHref}
         ctaLabel={ctaLabel}
         fullBleedUnderNav
-        disableImageOverlays
         ctaPlacement="bottomRight"
         preserveTitleCase
         stretchContentToEdge
