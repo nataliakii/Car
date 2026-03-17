@@ -637,6 +637,7 @@ export const PATCH = async (request, { params }) => {
             const updatedOrder = await order.save();
 
             try {
+              const company = await Company.findById(COMPANY_ID);
               const action = getActionFromChangedFields(fieldsToUpdate, payload);
               const orderPlain = updatedOrder.toObject ? updatedOrder.toObject() : { ...updatedOrder };
               await notifyOrderAction({
@@ -874,6 +875,7 @@ export const PATCH = async (request, { params }) => {
       const updatedOrder = await order.save();
 
       try {
+        const company = await Company.findById(COMPANY_ID);
         const action = getActionFromChangedFields(fieldsToUpdate, payload);
         const orderPlain = updatedOrder.toObject ? updatedOrder.toObject() : { ...updatedOrder };
         await notifyOrderAction({

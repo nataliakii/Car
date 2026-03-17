@@ -315,6 +315,12 @@ async function postOrderAddHandler(request) {
         });
       } catch (err) {
         notificationError = err?.message || "Notifications failed";
+        console.error("[ORDER-ADD] notifyOrderAction failed (order created, 202):", {
+          orderId: newOrder._id?.toString?.(),
+          action: "CREATE",
+          error: err?.message,
+          stack: err?.stack,
+        });
       }
 
       return new Response(
@@ -356,6 +362,12 @@ async function postOrderAddHandler(request) {
       });
     } catch (err) {
       notificationError = err?.message || "Notifications failed";
+      console.error("[ORDER-ADD] notifyOrderAction failed (order created, 201):", {
+        orderId: newOrder._id?.toString?.(),
+        action: "CREATE",
+        error: err?.message,
+        stack: err?.stack,
+      });
     }
 
     const body = newOrder.toObject ? newOrder.toObject() : { ...newOrder };

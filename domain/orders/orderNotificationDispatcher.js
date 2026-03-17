@@ -431,10 +431,11 @@ async function dispatchOrderNotifications(notifications, payload, access, compan
   await Promise.allSettled(promises);
 
   if (failures.length > 0) {
+    const orderId = payload?.orderId;
     for (const failure of failures) {
       console.error(
-        `[Notification Error] ${failure.channel} → ${failure.target}:`,
-        failure.err
+        `[Notification Error] orderId=${orderId} ${failure.channel} → ${failure.target}:`,
+        failure.err?.message || failure.err
       );
     }
 
@@ -474,6 +475,11 @@ export async function notifyOrderAction({
   locale,
 }) {
   if (!order || !user) {
+    console.warn("[notifyOrderAction] skipped: missing order or user", {
+      hasOrder: !!order,
+      hasUser: !!user,
+      orderId: order?._id?.toString?.(),
+    });
     return;
   }
   
