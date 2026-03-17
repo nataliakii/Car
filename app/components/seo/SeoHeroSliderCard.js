@@ -29,6 +29,7 @@ export default function SeoHeroSliderCard({
   stretchContentToEdge = false,
   ctaSx,
   enableTextShadow = false,
+  textShadowValue = "",
   heroBenefits = [],
   hideSecondaryContentOnPortraitPhone = false,
 }) {
@@ -88,7 +89,8 @@ export default function SeoHeroSliderCard({
   const shouldHideSecondaryContent =
     hideSecondaryContentOnPortraitPhone && isPortraitPhone;
   const heroTextShadow = enableTextShadow
-    ? "0 3px 14px rgba(0,0,0,0.65), 0 1px 3px rgba(0,0,0,0.75)"
+    ? (textShadowValue ||
+        "0 3px 14px rgba(0,0,0,0.65), 0 1px 3px rgba(0,0,0,0.75)")
     : "none";
 
   return (
