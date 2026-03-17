@@ -17,7 +17,7 @@ export type AirportPrioritySeoText = {
   seoLongText: string;
   /** Title for benefits block */
   benefitBlockTitle: string;
-  /** Why rent at airport — 5 bullets */
+  /** Airport benefits bullets */
   quickBenefits: string[];
   /** Distance table title */
   distanceTableTitle: string;
@@ -46,10 +46,11 @@ const AIRPORT_PRIORITY_SEO_BY_LOCALE: Record<
       "Renting a car at Thessaloniki Airport (SKG) is the easiest way to start your trip to Halkidiki. The airport is located only about 30 minutes from Nea Kallikratia and around one hour from many popular resorts in Halkidiki. With a rental car you can explore beautiful beaches, traditional villages and coastal roads without relying on public transport. Natali Cars offers pickup directly at the airport terminal, so you can collect your vehicle as soon as you land and drive straight to your accommodation. No need for taxis or shuttle buses — your car is ready when you are. The drive from Thessaloniki Airport to Halkidiki takes you along scenic routes with views of the Gulf of Thessaloniki. Nea Kallikratia is approximately 35 km away, while the main Halkidiki peninsula resorts are within 60–90 km. Thessaloniki city center is only 15 km from the airport if you need to make a stop. We offer flexible pickup times to match your flight schedule, competitive prices and a range of vehicles from economy to automatic and family cars. All rentals include comprehensive insurance and 24/7 support. Book your car rental at Thessaloniki Airport online and enjoy a stress-free start to your Halkidiki holiday.",
     benefitBlockTitle: "Why rent a car at Thessaloniki Airport",
     quickBenefits: [
-      "Immediate pickup after arrival",
-      "No need for taxi or bus",
+      "Free booking",
+      "No deposit",
+      "Pickup immediately after arrival",
       "Direct drive to Halkidiki beaches",
-      "Flexible pickup times",
+      "24/7 support",
       "Competitive prices",
     ],
     distanceTableTitle: "Distance from Thessaloniki Airport",
@@ -140,10 +141,11 @@ const AIRPORT_PRIORITY_SEO_BY_LOCALE: Record<
       "Оренда авто в аеропорту Салоніки (SKG) — найзручніший спосіб почати поїздку до Халкідік. Аеропорт знаходиться приблизно за 30 хвилин від Неа Калікратії. Natali Cars пропонує подачу в терміналі. Машина готова до вашого прильоту. Гнучкий час подачі, вигідні цени. Забронюйте авто в аеропорту Салоніки онлайн.",
     benefitBlockTitle: "Чому орендувати авто в аеропорту Салоніки",
     quickBenefits: [
+      "Безкоштовне бронювання",
+      "Без депозиту",
       "Подача одразу після прильоту",
-      "Без таксі та автобусів",
-      "Пряма дорога до пляжів Халкідік",
-      "Гнучкий час подачі",
+      "Пряма дорога до пляжів Халкідіки",
+      "Підтримка 24/7",
       "Вигідні ціни",
     ],
     distanceTableTitle: "Відстань від аеропорту Салоніки",
@@ -188,10 +190,11 @@ const AIRPORT_PRIORITY_SEO_BY_LOCALE: Record<
     benefitBlockTitle:
       "Γιατί να νοικιάσετε αυτοκίνητο στο αεροδρόμιο Θεσσαλονίκης",
     quickBenefits: [
-      "Άμεση παραλαβή μετά την άφιξη",
-      "Χωρίς ταξί ή λεωφορεία",
-      "Απευθείας για τις παραλίες της Χαλκιδικής",
-      "Ευέλικτες ώρες παραλαβής",
+      "Δωρεάν κράτηση",
+      "Χωρίς εγγύηση",
+      "Παραλαβή αμέσως μετά την άφιξη",
+      "Απευθείας προς τις παραλίες της Χαλκιδικής",
+      "Υποστήριξη 24/7",
       "Ανταγωνιστικές τιμές",
     ],
     distanceTableTitle: "Απόσταση από αεροδρόμιο Θεσσαλονίκης",
@@ -236,11 +239,12 @@ const AIRPORT_PRIORITY_SEO_BY_LOCALE: Record<
       "Ein Mietwagen am Flughafen Thessaloniki (SKG) ist der einfachste Start in die Chalkidiki. Der Flughafen liegt etwa 30 Minuten von Nea Kallikratia und etwa eine Stunde von vielen Resorts entfernt. Mit dem Mietwagen erkunden Sie Strände und Küstenorte. Natali Cars bietet Abholung am Terminal. Buchen Sie online.",
     benefitBlockTitle: "Warum am Flughafen Thessaloniki mieten",
     quickBenefits: [
-      "Abholung direkt nach Ankunft",
-      "Kein Taxi oder Bus nötig",
+      "Kostenlose Buchung",
+      "Ohne Kaution",
+      "Abholung direkt nach der Ankunft",
       "Direkt zu den Stränden der Chalkidiki",
-      "Flexible Abholzeiten",
-      "Konkurrenzfähige Preise",
+      "24/7-Support",
+      "Günstige Preise",
     ],
     distanceTableTitle: "Entfernung vom Flughafen Thessaloniki",
     distanceTableRows: [
@@ -283,11 +287,12 @@ const AIRPORT_PRIORITY_SEO_BY_LOCALE: Record<
       "Наемът на кола на летище Солун (SKG) е най-лесният старт за Халкидики. Летището е на около 30 минути от Неа Каликратия. С наета кола можете да посетите плажове и курорти. Natali Cars предлага получаване на терминала. Резервирайте онлайн.",
     benefitBlockTitle: "Защо да наемете кола на летище Солун",
     quickBenefits: [
+      "Безплатна резервация",
+      "Без депозит",
       "Получаване веднага след пристигане",
-      "Без такси или автобус",
       "Директно до плажовете на Халкидики",
-      "Гъвкаво време за получаване",
-      "Конкурентни цени",
+      "Поддръжка 24/7",
+      "Изгодни цени",
     ],
     distanceTableTitle: "Разстояние от летище Солун",
     distanceTableRows: [
@@ -329,11 +334,12 @@ const AIRPORT_PRIORITY_SEO_BY_LOCALE: Record<
       "Închirierea unei mașini la aeroportul Salonic (SKG) este cel mai simplu mod de a începe călătoria în Halkidiki. Aeroportul este la aproximativ 30 de minute de Nea Kallikratia. Cu mașina închiriată explorați plaje și sate. Natali Cars oferă preluare la terminal. Rezervați online.",
     benefitBlockTitle: "De ce să închiriați mașină la aeroportul Salonic",
     quickBenefits: [
+      "Rezervare gratuită",
+      "Fără depozit",
       "Preluare imediat după sosire",
-      "Fără taxi sau autobuz",
-      "Conducere directă spre plajele din Halkidiki",
-      "Ore flexibile de preluare",
-      "Prețuri competitive",
+      "Direct spre plajele din Halkidiki",
+      "Asistență 24/7",
+      "Prețuri avantajoase",
     ],
     distanceTableTitle: "Distanță de la aeroportul Salonic",
     distanceTableRows: [
@@ -375,11 +381,12 @@ const AIRPORT_PRIORITY_SEO_BY_LOCALE: Record<
       "Iznajmljivanje auta na aerodromu Solun (SKG) je najlakši način da započnete putovanje na Halkidiki. Aerodrom je oko 30 minuta od Nea Kalikratije. Sa iznajmljenim autom istražujete plaže i letovališta. Natali Cars nudi preuzimanje na terminalu. Rezervište online.",
     benefitBlockTitle: "Zašto iznajmiti auto na aerodromu Solun",
     quickBenefits: [
+      "Besplatna rezervacija",
+      "Bez depozita",
       "Preuzimanje odmah po dolasku",
-      "Bez taksi ili autobusa",
       "Direktno do plaža na Halkidikiju",
-      "Fleksibilno vreme preuzimanja",
-      "Konkurentne cene",
+      "Podrška 24/7",
+      "Povoljne cene",
     ],
     distanceTableTitle: "Udaljenost od aerodroma Solun",
     distanceTableRows: [

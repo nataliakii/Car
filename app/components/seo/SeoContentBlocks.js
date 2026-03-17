@@ -291,15 +291,54 @@ export function SeoCarFeaturesBlock({ title, features }) {
 }
 
 /** Why rent this car — semantic block */
-export function SeoWhyRentBlock({ title, bullets }) {
+export function SeoWhyRentBlock({
+  title,
+  bullets,
+  withCheckmarks = false,
+}) {
   if (!bullets || bullets.length === 0) return null;
 
   return (
     <section style={{ maxWidth: 980, margin: "0 auto", padding: "16px 16px 8px" }}>
       <h2 style={{ marginBottom: 12 }}>{title}</h2>
-      <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.7 }}>
+      <ul
+        style={{
+          margin: 0,
+          paddingLeft: withCheckmarks ? 0 : 20,
+          lineHeight: 1.7,
+          listStyle: withCheckmarks ? "none" : undefined,
+        }}
+      >
         {bullets.map((bullet, i) => (
-          <li key={i}>{bullet}</li>
+          <li
+            key={i}
+            style={
+              withCheckmarks
+                ? {
+                    marginBottom: 8,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 8,
+                  }
+                : undefined
+            }
+          >
+            {withCheckmarks ? (
+              <>
+                <span
+                  style={{ color: "#0a0", fontWeight: "bold" }}
+                  aria-hidden="true"
+                >
+                  {"\u2714"}
+                </span>
+                <span style={{ lineHeight: 1.5 }}>
+                  {String(bullet).replace(/^\s*(?:[✔✓]|âœ”)\s*/, "")}
+                </span>
+              </>
+            ) : (
+              bullet
+            )}
+          </li>
         ))}
       </ul>
     </section>

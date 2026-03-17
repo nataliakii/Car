@@ -408,6 +408,7 @@ export default async function LocationHierarchyPage({ params }) {
           {isAirport && prioritySeo?.benefitBlockTitle && prioritySeo?.quickBenefits?.length > 0 && (
             <SeoWhyRentBlock
               title={prioritySeo.benefitBlockTitle}
+              withCheckmarks
               bullets={prioritySeo.quickBenefits.map((b) => (b.startsWith("✔") ? b : `✔ ${b}`))}
             />
           )}

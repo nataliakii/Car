@@ -21,4 +21,16 @@ describe("airport priority SEO", () => {
       );
     }
   );
+
+  test.each(SUPPORTED_LOCALES)(
+    "%s locale keeps airport quick benefits aligned with the Russian source",
+    (locale) => {
+      const quickBenefits = getAirportPrioritySeo(locale).quickBenefits;
+
+      expect(quickBenefits).toHaveLength(
+        getAirportPrioritySeo("ru").quickBenefits.length
+      );
+      expect(quickBenefits.every((item) => item.trim().length > 0)).toBe(true);
+    }
+  );
 });
