@@ -89,8 +89,7 @@ export default function SeoHeroSliderCard({
   const shouldHideSecondaryContent =
     hideSecondaryContentOnPortraitPhone && isPortraitPhone;
   const heroTextShadow = enableTextShadow
-    ? (textShadowValue ||
-        "0 3px 14px rgba(0,0,0,0.65), 0 1px 3px rgba(0,0,0,0.75)")
+    ? (textShadowValue || "0 1px 2px rgba(0,0,0,0.4)")
     : "none";
 
   return (
@@ -126,30 +125,15 @@ export default function SeoHeroSliderCard({
       ))}
 
       {!disableImageOverlays && (
-        <>
-          {/* Dark overlay so white text is clearly readable */}
-          <Box
-            sx={{
-              position: "absolute",
-              inset: 0,
-              background: "linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.55))",
-              pointerEvents: "none",
-            }}
-          />
-
-          {/* Gradient from right for text area */}
-          <Box
-            sx={(theme) => ({
-              position: "absolute",
-              inset: 0,
-              background: `linear-gradient(270deg, 
-                ${theme.palette.common.black}CC 0%, 
-                ${theme.palette.common.black}88 40%, 
-                transparent 75%)`,
-              pointerEvents: "none",
-            })}
-          />
-        </>
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0.55) 75%, rgba(0,0,0,0.7) 100%)",
+            pointerEvents: "none",
+          }}
+        />
       )}
 
       {/* CONTENT: CTA above title, then paragraphs (no absolute positioning) */}
@@ -224,12 +208,9 @@ export default function SeoHeroSliderCard({
                 maxWidth: 340,
                 px: { xs: 1.35, md: 1.7 },
                 py: { xs: 1.1, md: 1.4 },
-                borderRadius: { xs: "16px", md: "18px" },
-                background:
-                  "linear-gradient(180deg, rgba(16,22,38,0.32) 0%, rgba(10,14,26,0.20) 100%)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                backdropFilter: "blur(9px)",
-                boxShadow: "0 14px 30px rgba(0,0,0,0.16)",
+                borderRadius: { xs: "12px", md: "14px" },
+                backgroundColor: "rgba(0,0,0,0.45)",
+                border: "1px solid rgba(255,255,255,0.12)",
               }}
             >
               <Stack spacing={{ xs: 0.7, md: 0.85 }}>
@@ -257,11 +238,10 @@ export default function SeoHeroSliderCard({
                     </Typography>
                     <CheckCircleRoundedIcon
                       sx={{
-                        color: "#35c759",
+                        color: "rgba(53,199,89,0.95)",
                         fontSize: { xs: 20, md: 22 },
                         mt: "1px",
                         flexShrink: 0,
-                        filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.35))",
                       }}
                     />
                   </Box>
