@@ -83,7 +83,8 @@ const CalendarPicker = ({
   // Состояние для расчета суммы заказа
   const [totalPrice, setTotalPrice] = useState(0);
   const [calcLoading, setCalcLoading] = useState(false);
-  const carApiIdentifier = car?.regNumber || car?.carNumber || "";
+  // carId (_id) is always unique in MongoDB. Fallback: carNumber, regNumber.
+  const carApiIdentifier = car?._id?.toString?.() || car?.carNumber || car?.regNumber || "";
 
   // Расчет суммы заказа через action
   const fetchTotalPrice = useCallback(async () => {

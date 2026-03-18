@@ -12,6 +12,7 @@
     "migrate:childSeats": "node scripts/migrate_childSeats_to_ChildSeats.js",
     "migrate:secondDriver": "node scripts/migrate_secondDriver_field.js",
     "migrate:car-slugs": "node scripts/migrateCarSlugs.js",
+    "clean:car-order-refs": "node scripts/cleanCarOrphanOrderRefs.js",
     "seed:testing-car": "node scripts/seedTestingCarField.js",
     "test": "jest",
     "test:timezone": "jest athensTime.roundtrip --verbose",

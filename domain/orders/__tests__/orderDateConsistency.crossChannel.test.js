@@ -7,12 +7,11 @@ import {
 import { fromServerUTC } from "@/domain/time/athensTime";
 import { getBusinessDaySpanFromStoredDates } from "../numberOfDays";
 import { notifyOrderAction } from "../orderNotificationDispatcher";
-import { sendTelegramMessage } from "@utils/action";
+import { sendEmailDirect } from "@/lib/email/sendDirect";
+import { sendTelegramDirect } from "@/lib/telegram/sendDirect";
 
-jest.mock("@utils/action", () => ({
-  getApiUrl: jest.fn((path) => `http://localhost:3000${path}`),
-  sendTelegramMessage: jest.fn(),
-}));
+jest.mock("@/lib/email/sendDirect", () => ({ sendEmailDirect: jest.fn() }));
+jest.mock("@/lib/telegram/sendDirect", () => ({ sendTelegramDirect: jest.fn() }));
 
 describe("order date consistency across channels", () => {
   const originalEmailTesting = process.env.EMAIL_TESTING;
@@ -57,11 +56,8 @@ describe("order date consistency across channels", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.EMAIL_TESTING = "false";
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: "ok" }),
-    });
-    sendTelegramMessage.mockResolvedValue(true);
+    sendEmailDirect.mockResolvedValue({ messageId: "test-id" });
+    sendTelegramDirect.mockResolvedValue(true);
   });
 
   afterAll(() => {
@@ -101,15 +97,15 @@ describe("order date consistency across channels", () => {
       locale: "en",
     });
 
-    expect(sendTelegramMessage).toHaveBeenCalledTimes(1);
-    const telegramText = sendTelegramMessage.mock.calls[0][0];
+    expect(sendTelegramDirect).toHaveBeenCalledTimes(1);
+    const telegramText = sendTelegramDirect.mock.calls[0][0];
     expect(telegramText).toContain(`📅 From: ${expectedStartTelegram}`);
     expect(telegramText).toContain(`📅 To: ${expectedEndTelegram}`);
     expect(telegramText).toContain(`🗓 Days: ${order.numberOfDays}`);
     expect(telegramText).toContain("AA-1234");
 
-    const firstEmailPayload = JSON.parse(global.fetch.mock.calls[0][1].body);
-    expect(firstEmailPayload.message).toContain(`🗓 Days: ${order.numberOfDays}`);
+    const firstEmailCall = sendEmailDirect.mock.calls[0][0];
+    expect(firstEmailCall.message).toContain(`🗓 Days: ${order.numberOfDays}`);
 
     const ordersGridRow = mapOrderToOrdersDataGridRow(order, 0, [
       { carNumber: order.carNumber, regNumber: "AA-1234" },
@@ -161,13 +157,13 @@ describe("order date consistency across channels", () => {
       locale: "en",
     });
 
-    const telegramText = sendTelegramMessage.mock.calls[0][0];
+    const telegramText = sendTelegramDirect.mock.calls[0][0];
     expect(telegramText).toContain(`📅 From: ${expectedStartTelegram}`);
     expect(telegramText).toContain(`📅 To: ${expectedEndTelegram}`);
     expect(telegramText).toContain(`🗓 Days: ${mayOrder.numberOfDays}`);
     expect(telegramText).toContain("AA-1234");
 
-    const emailPayload = JSON.parse(global.fetch.mock.calls[0][1].body);
+    const emailPayload = sendEmailDirect.mock.calls[0][0];
     expect(emailPayload.message).toContain(`🗓 Days: ${mayOrder.numberOfDays}`);
 
     const ordersGridRow = mapOrderToOrdersDataGridRow(mayOrder, 0, [

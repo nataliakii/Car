@@ -1,10 +1,9 @@
 import { notifyOrderAction } from "../orderNotificationDispatcher";
-import { sendTelegramMessage } from "@utils/action";
+import { sendEmailDirect } from "@/lib/email/sendDirect";
+import { sendTelegramDirect } from "@/lib/telegram/sendDirect";
 
-jest.mock("@utils/action", () => ({
-  getApiUrl: jest.fn((path) => `http://localhost:3000${path}`),
-  sendTelegramMessage: jest.fn(),
-}));
+jest.mock("@/lib/email/sendDirect", () => ({ sendEmailDirect: jest.fn() }));
+jest.mock("@/lib/telegram/sendDirect", () => ({ sendTelegramDirect: jest.fn() }));
 
 describe("orderNotificationDispatcher", () => {
   const originalEmailTesting = process.env.EMAIL_TESTING;
@@ -39,8 +38,8 @@ describe("orderNotificationDispatcher", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.EMAIL_TESTING = "false";
-    global.fetch = jest.fn();
-    sendTelegramMessage.mockResolvedValue(true);
+    sendEmailDirect.mockResolvedValue({ messageId: "test-id" });
+    sendTelegramDirect.mockResolvedValue(true);
   });
 
   afterAll(() => {
@@ -48,11 +47,6 @@ describe("orderNotificationDispatcher", () => {
   });
 
   test("CREATE client order sends all channels and formats dates in Athens timezone", async () => {
-    global.fetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: "ok" }),
-    });
-
     await expect(
       notifyOrderAction({
         order: baseOrder,
@@ -65,32 +59,22 @@ describe("orderNotificationDispatcher", () => {
     ).resolves.toBeUndefined();
 
     // COMPANY_EMAIL + SUPERADMIN + CUSTOMER -> 3 email sends
-    expect(global.fetch).toHaveBeenCalledTimes(3);
+    expect(sendEmailDirect).toHaveBeenCalledTimes(3);
     // SUPERADMIN telegram only once for this scenario
-    expect(sendTelegramMessage).toHaveBeenCalledTimes(1);
+    expect(sendTelegramDirect).toHaveBeenCalledTimes(1);
 
-    const firstPayload = JSON.parse(global.fetch.mock.calls[0][1].body);
-    expect(firstPayload.message).toContain("📅 From: 15-01-26");
-    expect(firstPayload.message).toContain("📅 To: 17-01-26");
-    expect(firstPayload.message).toContain("AA-1234");
-    expect(sendTelegramMessage.mock.calls[0][0]).toContain("AA-1234");
+    const firstEmailCall = sendEmailDirect.mock.calls[0][0];
+    expect(firstEmailCall.message).toContain("📅 From: 15-01-26");
+    expect(firstEmailCall.message).toContain("📅 To: 17-01-26");
+    expect(firstEmailCall.message).toContain("AA-1234");
+    expect(sendTelegramDirect.mock.calls[0][0]).toContain("AA-1234");
   });
 
   test("throws aggregated error when at least one channel fails, but still attempts all channels", async () => {
-    global.fetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ status: "ok" }),
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: async () => ({ error: "SMTP down" }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ status: "ok" }),
-      });
+    sendEmailDirect
+      .mockResolvedValueOnce({ messageId: "ok" })
+      .mockRejectedValueOnce(new Error("SMTP down"))
+      .mockResolvedValueOnce({ messageId: "ok" });
 
     await expect(
       notifyOrderAction({
@@ -103,8 +87,8 @@ describe("orderNotificationDispatcher", () => {
       })
     ).rejects.toThrow(/Notification dispatch failed/);
 
-    expect(global.fetch).toHaveBeenCalledTimes(3);
-    expect(sendTelegramMessage).toHaveBeenCalledTimes(1);
+    expect(sendEmailDirect).toHaveBeenCalledTimes(3);
+    expect(sendTelegramDirect).toHaveBeenCalledTimes(1);
   });
 
   test("UPDATE_DATES on confirmed client order includes old/new prices in critical message", async () => {
@@ -125,11 +109,6 @@ describe("orderNotificationDispatcher", () => {
       OverridePrice: null,
     };
 
-    global.fetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: "ok" }),
-    });
-
     await expect(
       notifyOrderAction({
         order: confirmedClientOrderAfter,
@@ -140,8 +119,8 @@ describe("orderNotificationDispatcher", () => {
       })
     ).resolves.toBeUndefined();
 
-    expect(sendTelegramMessage).toHaveBeenCalledTimes(1);
-    const telegramText = sendTelegramMessage.mock.calls[0][0];
+    expect(sendTelegramDirect).toHaveBeenCalledTimes(1);
+    const telegramText = sendTelegramDirect.mock.calls[0][0];
     expect(telegramText).toContain("CRITICAL: CRITICAL_EDIT on confirmed client order");
     expect(telegramText).toContain("Действие: UPDATE_DATES");
     expect(telegramText).toContain("Старая цена: €100.00");

@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { connectToDB } from "@lib/database";
 import { Car } from "@models/car";
 import { toBusinessDateTime } from "@/domain/orders/numberOfDays";
@@ -21,6 +22,7 @@ export async function POST(request) {
     await connectToDB();
     debugBody = await request.json();
     const {
+      carId,
       carNumber,
       regNumber,
       rentalStartDate,
@@ -37,6 +39,7 @@ export async function POST(request) {
     const normalizedEndDate = toBusinessDateTime(calculationEndSource);
     const normalizedSecondDriver = toBooleanField(secondDriver, false);
     console.log("[API calcTotalPrice] Получены параметры:", {
+      carId,
       carNumber,
       regNumber,
       rentalStartDate,
@@ -49,12 +52,13 @@ export async function POST(request) {
       childSeats,
       secondDriver: normalizedSecondDriver,
     });
+    const normalizedCarId = carId != null ? String(carId).trim() : "";
     const normalizedCarNumber =
       typeof carNumber === "string" ? carNumber.trim() : "";
     const normalizedRegNumber =
       typeof regNumber === "string" ? regNumber.trim() : "";
     if (
-      (!normalizedRegNumber && !normalizedCarNumber) ||
+      (!normalizedCarId && !normalizedRegNumber && !normalizedCarNumber) ||
       !normalizedStartDate ||
       !normalizedEndDate ||
       !normalizedStartDate.isValid() ||
@@ -66,12 +70,16 @@ export async function POST(request) {
       });
     }
 
+    // _id is always unique (MongoDB default index). Fallback: carNumber, then regNumber.
     let car = null;
-    if (normalizedRegNumber) {
-      car = await Car.findOne({ regNumber: normalizedRegNumber });
+    if (normalizedCarId && mongoose.Types.ObjectId.isValid(normalizedCarId)) {
+      car = await Car.findById(normalizedCarId);
     }
     if (!car && normalizedCarNumber) {
       car = await Car.findOne({ carNumber: normalizedCarNumber });
+    }
+    if (!car && normalizedRegNumber) {
+      car = await Car.findOne({ regNumber: normalizedRegNumber });
     }
 
     if (!car) {

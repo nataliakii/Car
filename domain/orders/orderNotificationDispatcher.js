@@ -35,9 +35,10 @@ import { getOrderAccess } from "./orderAccessPolicy";
 import { getBusinessDaySpanFromStoredDates } from "./numberOfDays";
 import { getTimeBucket, fromServerUTC } from "@/domain/time/athensTime";
 import { ROLE } from "./admin-rbac";
-import { getApiUrl, sendTelegramMessage } from "@utils/action";
 import { DEVELOPER_EMAIL } from "@config/email";
 import { renderCustomerOrderConfirmationEmail, renderAdminOrderNotificationEmail } from "@/app/ui/email/renderEmail";
+import { sendEmailDirect } from "@/lib/email/sendDirect";
+import { sendTelegramDirect } from "@/lib/telegram/sendDirect";
 
 // ════════════════════════════════════════════════════════════════
 // TYPES
@@ -288,9 +289,9 @@ function formatCustomerEmailContent(payload) {
 async function sendTelegramNotification(target, payload, reason, priority) {
   const emoji = priority === "CRITICAL" ? "🚨" : priority === "INFO" ? "ℹ️" : "🔍";
   const text = `${emoji} ${reason}\n\n${formatNotificationText(payload, reason)}`;
-  const sent = await sendTelegramMessage(text);
-  if (process.env.NODE_ENV !== "production" && !sent) {
-    console.log(`[TELEGRAM → ${target}] [${priority}] (send failed, logged)`, reason, payload);
+  const sent = await sendTelegramDirect(text);
+  if (!sent) {
+    throw new Error("Telegram send failed");
   }
 }
 
@@ -348,24 +349,13 @@ async function sendEmailNotification(target, payload, reason, priority, companyE
   }
 
   try {
-    const url = getApiUrl("/api/sendEmail");
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: "",
-        emailCompany: DEVELOPER_EMAIL,
-        title,
-        message: body,
-        html: html || undefined,
-        to: toList,
-        cc: ccList,
-      }),
+    await sendEmailDirect({
+      title,
+      message: body,
+      html: html || undefined,
+      to: toList,
+      cc: ccList,
     });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${response.status}`);
-    }
   } catch (err) {
     if (process.env.NODE_ENV !== "production") {
       console.log(`[EMAIL → ${target}] [${priority}] (send failed)`, reason, err?.message);

@@ -1,6 +1,7 @@
 import { revalidateTag } from "next/cache";
 import { API_PATHS } from "@config/apiPaths";
 import sendEmail from "./sendEmail";
+import { sendTelegramDirect } from "@/lib/telegram/sendDirect";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -40,7 +41,12 @@ export function getApiUrl(path) {
   if (!API_URL) {
     console.warn("[getApiUrl] API_URL is not set, using localhost fallback");
   }
-  const baseUrl = API_URL || "http://localhost:3000";
+  let baseUrl = API_URL || "http://localhost:3000";
+  // Fix "fetch failed" when server calls itself: localhost can resolve to IPv6 ::1
+  // while server listens on 127.0.0.1. Use 127.0.0.1 for internal fetch.
+  if (baseUrl.includes("localhost")) {
+    baseUrl = baseUrl.replace(/localhost/g, "127.0.0.1");
+  }
 
   return `${baseUrl}${path}`;
 }
@@ -1030,8 +1036,11 @@ export async function calculateTotalPrice(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        carId: /^[a-f0-9]{24}$/i.test(String(carIdentifier || ""))
+          ? carIdentifier
+          : undefined,
         regNumber: carIdentifier,
-        carNumber: carIdentifier, // legacy fallback
+        carNumber: carIdentifier,
         rentalStartDate,
         rentalEndDate,
         timeIn: normalizedTimeIn,
@@ -1407,120 +1416,6 @@ function formatOrderTelegramMessage(type, order, deletedBy) {
 }
 
 /**
- * Sends a message to Telegram via internal API route
- * @param {string} message - Formatted message to send
- * @returns {Promise<boolean>} Success status
- */
-export async function sendTelegramMessage(message) {
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-
-  if (!chatId) {
-    console.error(
-      "[Telegram] TELEGRAM_CHAT_ID is not configured in environment variables"
-    );
-    return false;
-  }
-
-  const chatIdNumber = parseInt(chatId, 10);
-  if (isNaN(chatIdNumber)) {
-    console.error(
-      "[Telegram] TELEGRAM_CHAT_ID must be a valid number, got:",
-      chatId
-    );
-    return false;
-  }
-
-  try {
-    const response = await fetch(getApiUrl(API_PATHS.TELEGRAM_SEND), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        endpoint: "/button2607",
-        chat_id: chatIdNumber,
-        message: message,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(
-        "[Telegram] API returned error status:",
-        response.status,
-        errorData.error || "Unknown error"
-      );
-      return false;
-    }
-
-    const result = await response.json();
-
-    if (!result.success) {
-      console.error("[Telegram] API returned failure:", result.error);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    // Log error but don't throw - Telegram notifications must never break core flows
-    console.error(
-      "[Telegram] Failed to send message:",
-      error.message || "Unknown error"
-    );
-    return false;
-  }
-}
-
-/**
- * Sends a Telegram notification when a new order is created
- *
- * @param {Object} order - Order data
- * @param {string|number} order.id - Order ID or number
- * @param {string} order.startDate - Rental start date (ISO string)
- * @param {string} order.endDate - Rental end date (ISO string)
- * @param {number} order.totalPrice - Total price
- * @param {string} order.currency - Currency code (EUR, USD, etc.)
- * @param {Object} [order.car] - Car info
- * @param {string} [order.car.model] - Car model
- * @param {string} [order.car.regNumber] - Car registration number
- * @param {Object} order.customer - Customer info
- * @param {string} order.customer.name - Customer name
- * @param {string} [order.customer.phone] - Customer phone
- * @param {string} [order.customer.email] - Customer email
- * @returns {Promise<boolean>} True if sent successfully, false otherwise
- *
- * @example
- * await sendNewOrderTelegramNotification({
- *   id: '1234',
- *   startDate: '2026-02-01',
- *   endDate: '2026-02-05',
- *   totalPrice: 450,
- *   currency: 'EUR',
- *   car: {
- *     model: 'Toyota Yaris',
- *     regNumber: 'XYZ-1234'
- *   },
- *   customer: {
- *     name: 'John Doe',
- *     phone: '+353...',
- *     email: 'john@email.com'
- *   }
- * });
- */
-export async function sendNewOrderTelegramNotification(order) {
-  // Validate order
-  const validationError = validateOrderForTelegram(order);
-  if (validationError) {
-    console.error("[Telegram] New order notification failed:", validationError);
-    return false;
-  }
-
-  // Format and send message
-  const message = formatOrderTelegramMessage("new_order", order);
-  return await sendTelegramMessage(message);
-}
-
-/**
  * Sends a Telegram notification when an order is deleted
  *
  * @param {Object} order - Order data
@@ -1576,7 +1471,7 @@ export async function sendOrderDeletedTelegramNotification(order, deletedBy) {
     return false;
   }
 
-  // Format and send message
+  // Format and send message (use sendTelegramDirect to avoid fetch-to-self)
   const message = formatOrderTelegramMessage("order_deleted", order, deletedBy);
-  return await sendTelegramMessage(message);
+  return await sendTelegramDirect(message);
 }

@@ -368,7 +368,7 @@ const AddOrder = ({ open, onClose, car, date, setUpdateStatus }) => {
       : daysAndTotal.totalPrice;
     
     const data = {
-      // regNumber is primary identifier for booking flows; carNumber kept as fallback.
+      carId: car?._id?.toString?.() || "",
       regNumber: car?.regNumber,
       carNumber: car?.carNumber,
       customerName: orderDetails.customerName,

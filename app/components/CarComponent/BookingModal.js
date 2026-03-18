@@ -90,7 +90,8 @@ const BookingModal = ({
   const { t } = useTranslation();
   const secondDriverPriceLabelValue = getSecondDriverPriceLabelValue();
   const { company, companyLoading, companyError, lang } = useMainContext();
-  const carApiIdentifier = car?.regNumber || car?.carNumber || "";
+  // carId (_id) is always unique in MongoDB. Fallback: carNumber, regNumber.
+  const carApiIdentifier = car?._id?.toString?.() || car?.carNumber || car?.regNumber || "";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -521,7 +522,7 @@ const BookingModal = ({
       const timeOutUTC = toServerUTC(timeOutAthens);
 
       const orderData = {
-        // regNumber is primary identifier for booking flows; carNumber kept as fallback.
+        carId: car?._id?.toString?.() || "",
         regNumber: car?.regNumber || "",
         carNumber: car?.carNumber || "",
         customerName: name || "",

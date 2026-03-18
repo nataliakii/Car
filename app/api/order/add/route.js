@@ -69,6 +69,7 @@ async function postOrderAddHandler(request) {
     await connectToDB();
 
     const {
+      carId,
       carNumber,
       regNumber,
       customerName,
@@ -144,12 +145,14 @@ async function postOrderAddHandler(request) {
       );
     }
 
+    const normalizedCarId =
+      carId != null ? String(carId).trim() : "";
     const normalizedCarNumber =
       typeof carNumber === "string" ? carNumber.trim() : "";
     const normalizedRegNumber =
       typeof regNumber === "string" ? regNumber.trim() : "";
 
-    if (!normalizedRegNumber && !normalizedCarNumber) {
+    if (!normalizedCarId && !normalizedRegNumber && !normalizedCarNumber) {
       return new Response(
         JSON.stringify({
           message: "Car identifier is required",
@@ -161,13 +164,16 @@ async function postOrderAddHandler(request) {
       );
     }
 
-    // Find car primarily by regNumber, fallback to legacy carNumber.
+    // Find car: _id is always unique (MongoDB default index). Fallback: carNumber, then regNumber.
     let existingCar = null;
-    if (normalizedRegNumber) {
-      existingCar = await Car.findOne({ regNumber: normalizedRegNumber });
+    if (normalizedCarId && mongoose.Types.ObjectId.isValid(normalizedCarId)) {
+      existingCar = await Car.findById(normalizedCarId);
     }
     if (!existingCar && normalizedCarNumber) {
       existingCar = await Car.findOne({ carNumber: normalizedCarNumber });
+    }
+    if (!existingCar && normalizedRegNumber) {
+      existingCar = await Car.findOne({ regNumber: normalizedRegNumber });
     }
 
     if (!existingCar) {

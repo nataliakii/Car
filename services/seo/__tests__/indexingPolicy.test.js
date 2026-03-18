@@ -20,7 +20,8 @@ describe("indexingPolicy", () => {
         index: false,
         follow: true,
       });
-      expect(INDEXABLE_PATHS.size).toBe(16);
+      // PRIMARY_LOCATION_IDS (4) × SUPPORTED_LOCALES (8) = 32
+      expect(INDEXABLE_PATHS.size).toBe(32);
       return;
     }
 
