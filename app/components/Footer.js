@@ -199,6 +199,50 @@ function Footer() {
         </ContactItem>
       </ContactInfo>
 
+      {/* Nea Kallikratia Guide banner */}
+      <Box
+        component="a"
+        href={`https://kalikratia.bbqr.site/${lang || "en"}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        sx={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 1.5,
+          mt: 3,
+          mb: 1,
+          px: 2,
+          py: 1.25,
+          borderRadius: "10px",
+          backgroundColor: "rgba(255,255,255,0.12)",
+          border: "1px solid rgba(255,255,255,0.25)",
+          textDecoration: "none",
+          color: "#ffffff",
+          fontSize: "0.8rem",
+          transition: "background-color 0.2s, border-color 0.2s",
+          "&:hover": {
+            backgroundColor: "rgba(255,255,255,0.2)",
+            borderColor: "rgba(255,255,255,0.4)",
+          },
+        }}
+      >
+        <Image
+          src="/nk/9.png"
+          alt="Nea Kallikratia Guide"
+          width={36}
+          height={36}
+          style={{ borderRadius: 6, objectFit: "cover" }}
+        />
+        <Typography component="span" sx={{ fontSize: "inherit", lineHeight: 1.3 }}>
+          {t("footer.kallikratiaBanner", {
+            defaultValue: "Don't Know Where to Go Halkidiki?",
+          })}{" "}
+          {t("footer.kallikratiaBannerLink", {
+            defaultValue: "Nea Kallikratia Guide",
+          })}
+        </Typography>
+      </Box>
+
       {/* Legal Links - строка, не блок */}
       <Stack
         direction="row"

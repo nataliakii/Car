@@ -143,17 +143,28 @@ export default function SeoHeroSliderCard({
           zIndex: 2,
           maxWidth: stretchContentToEdge ? "100%" : 1200,
           mx: "auto",
-          px: 3,
-          py: { xs: 6, md: 10 },
+          px: { xs: 2.5, sm: 3, md: 4 },
+          py: { xs: 5, md: 9 },
           color: "common.white",
           display: "flex",
           justifyContent: "flex-end",
+          alignItems: "center",
+          minHeight: { xs: 380, md: 480 },
           ...(fullBleedUnderNav && { pt: HERO_TOP_PADDING }),
         }}
       >
-        <Box sx={{ maxWidth: 680, textAlign: "right" }}>
+        <Box
+          sx={{
+            maxWidth: 580,
+            textAlign: "right",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: { xs: 1.25, md: 1.5 },
+          }}
+        >
           {ctaHref && ctaLabel && ctaPlacement !== "bottomRight" && (
-            <Box sx={{ mb: 2 }}>
+            <Box sx={{ mb: 0.5 }}>
               <ActionButton
                 component={Link}
                 href={ctaHref}
@@ -169,13 +180,12 @@ export default function SeoHeroSliderCard({
             component="h1"
             variant="h2"
             sx={{
-              fontWeight: 1000,
-              lineHeight: 1.2,
-              mb: 2,
+              fontWeight: 700,
+              lineHeight: 1.15,
               color: "common.white",
               textTransform: preserveTitleCase ? "none" : "uppercase",
-              letterSpacing: "0.05em",
-              fontSize: "clamp(1.5rem, 4vw, 2.5rem)",
+              letterSpacing: { xs: "0.04em", md: "0.06em" },
+              fontSize: "clamp(1.75rem, 4.5vw, 2.75rem)",
               textShadow: heroTextShadow,
             }}
           >
@@ -188,11 +198,12 @@ export default function SeoHeroSliderCard({
                 key={i}
                 variant="body1"
                 sx={{
-                  opacity: 0.92,
-                  lineHeight: 1.7,
-                  mb: 1.5,
+                  opacity: 0.95,
+                  lineHeight: 1.65,
+                  maxWidth: 520,
                   color: "common.white",
                   textShadow: heroTextShadow,
+                  fontSize: { xs: "0.95rem", md: "1.05rem" },
                 }}
               >
                 {p}
@@ -202,15 +213,15 @@ export default function SeoHeroSliderCard({
           {!shouldHideSecondaryContent && hasHeroBenefits && (
             <Box
               sx={{
-                mt: { xs: 2, md: 2.5 },
-                ml: "auto",
-                width: { xs: "100%", md: "min(340px, 100%)" },
-                maxWidth: 340,
-                px: { xs: 1.35, md: 1.7 },
-                py: { xs: 1.1, md: 1.4 },
-                borderRadius: { xs: "12px", md: "14px" },
-                backgroundColor: "rgba(0,0,0,0.45)",
-                border: "1px solid rgba(255,255,255,0.12)",
+                mt: { xs: 1, md: 1.5 },
+                width: { xs: "100%", md: "min(320px, 100%)" },
+                maxWidth: 320,
+                px: { xs: 1.5, md: 1.75 },
+                py: { xs: 1.25, md: 1.5 },
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.35) 100%)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                backdropFilter: "blur(8px)",
               }}
             >
               <Stack spacing={{ xs: 0.7, md: 0.85 }}>
