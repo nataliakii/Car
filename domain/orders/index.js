@@ -33,20 +33,8 @@ export {
   createOrderContext,
 } from "./orderAccessPolicy";
 
-export { confirmOrderFlow } from "./confirmOrderFlow";
-
-// ============================================
-// NOTIFICATION DISPATCHER (единая точка входа)
-// ============================================
-// 
-// 🔑 ТОЛЬКО notifyOrderAction экспортируется наружу.
-// Внутренние функции (getOrderNotifications, dispatchOrderNotifications)
-// НЕ экспортируются — они internal.
-//
-// Для тестов используй прямой импорт из orderNotificationPolicy.js
-//
-
-export { notifyOrderAction } from "./orderNotificationDispatcher";
+// confirmOrderFlow, notifyOrderAction — server-only (nodemailer/fs).
+// Импортируй напрямую: @/domain/orders/confirmOrderFlow, @/domain/orders/orderNotificationDispatcher
 
 // Helpers для определения action из изменённых полей
 export { getActionFromChangedFields } from "./orderNotificationPolicy";
