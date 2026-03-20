@@ -16,7 +16,7 @@ dayjs.extend(timezone);
 
 const ATHENS_TZ = "Europe/Athens";
 const ORDER_SELECT =
-  "rentalStartDate rentalEndDate timeIn timeOut car carNumber regNumber confirmed customerName phone email secondDriver Viber Whatsapp Telegram numberOfDays totalPrice OverridePrice carModel date my_order placeIn placeOut flightNumber ChildSeats insurance franchiseOrder orderNumber";
+  "rentalStartDate rentalEndDate timeIn timeOut car carNumber regNumber confirmed customerName phone email secondDriver Viber Whatsapp Telegram numberOfDays totalPrice OverridePrice carModel date my_order placeIn placeOut flightNumber ChildSeats insurance franchiseOrder orderNumber clientLang clientIP clientCountry clientRegion clientCity";
 
 function getTodayAthensStartUTC() {
   const nowAthens = dayjs().tz(ATHENS_TZ);

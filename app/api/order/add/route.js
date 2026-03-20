@@ -25,12 +25,121 @@ import {
 } from "@/domain/orders/numberOfDays";
 import { connectToDB } from "@lib/database";
 import { orderGuard } from "@/middleware/orderGuard";
+import { normalizeLocale } from "@domain/locationSeo/locationSeoService";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 dayjs.extend(isBetween);
 
 const BUSINESS_TZ = "Europe/Athens";
+
+// Cache GeoIP by IP to keep requests minimal (we only need up to ~10/day).
+const IP_GEO_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const IP_GEO_CACHE = new Map();
+
+function getClientIp(request) {
+  const headers = request?.headers;
+  const xForwardedFor = headers?.get?.("x-forwarded-for");
+  if (xForwardedFor) {
+    const first = xForwardedFor.split(",")[0]?.trim();
+    if (first) return first;
+  }
+
+  const xRealIp = headers?.get?.("x-real-ip");
+  if (xRealIp) return String(xRealIp).trim();
+
+  // NextRequest (sometimes) exposes request.ip
+  const ip = request?.ip;
+  if (ip && typeof ip === "string") return ip.trim();
+
+  return "";
+}
+
+/**
+ * True if IP is not a real public client address (localhost, LAN, link-local, etc.).
+ * ::1 is IPv6 loopback (same role as 127.0.0.1) — common on local dev.
+ */
+function isPrivateIp(ip) {
+  if (!ip || typeof ip !== "string") return true;
+  const raw = ip.trim();
+  if (!raw) return true;
+
+  // Strip zone id (fe80::1%eth0)
+  const noZone = raw.split("%")[0].trim();
+  const lower = noZone.toLowerCase();
+
+  // IPv4-mapped IPv6 (::ffff:192.168.x.x, ::ffff:127.0.0.1)
+  if (lower.startsWith("::ffff:")) {
+    const v4 = lower.slice(7);
+    return isPrivateIpv4(v4);
+  }
+
+  if (!lower.includes(":")) {
+    return isPrivateIpv4(lower);
+  }
+
+  // IPv6 loopback
+  if (lower === "::1" || lower === "0:0:0:0:0:0:0:1") return true;
+  // IPv6 link-local fe80::/10
+  if (lower.startsWith("fe80:")) return true;
+  // IPv6 unique local fc00::/7
+  if (/^f[cd][0-9a-f]{2}:/i.test(lower)) return true;
+
+  return false;
+}
+
+function isPrivateIpv4(s) {
+  if (!s) return true;
+  if (s === "0.0.0.0") return true;
+  if (s.startsWith("127.")) return true;
+  if (s.startsWith("10.")) return true;
+  if (s.startsWith("192.168.")) return true;
+  if (s.startsWith("169.254.")) return true;
+  if (s.startsWith("0.")) return true;
+  if (s.startsWith("172.")) {
+    const secondOctet = Number(s.split(".")[1]);
+    return Number.isFinite(secondOctet) && secondOctet >= 16 && secondOctet <= 31;
+  }
+  return false;
+}
+
+async function getGeoFromIpApi(ip) {
+  if (!ip || isPrivateIp(ip)) {
+    return { country: "", region: "", city: "" };
+  }
+
+  const cached = IP_GEO_CACHE.get(ip);
+  if (cached && Date.now() - cached.ts < IP_GEO_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  try {
+    const url = `https://ip-api.com/json/${encodeURIComponent(
+      ip
+    )}?fields=status,country,regionName,city,message&lang=en`;
+    const res = await fetch(url, { method: "GET" });
+    const data = await res.json();
+
+    if (!data || data.status !== "success") {
+      const empty = { country: "", region: "", city: "" };
+      IP_GEO_CACHE.set(ip, { ts: Date.now(), data: empty });
+      return empty;
+    }
+
+    const result = {
+      country: data.country || "",
+      region: data.regionName || "",
+      city: data.city || "",
+    };
+
+    IP_GEO_CACHE.set(ip, { ts: Date.now(), data: result });
+    return result;
+  } catch (e) {
+    const empty = { country: "", region: "", city: "" };
+    IP_GEO_CACHE.set(ip, { ts: Date.now(), data: empty });
+    return empty;
+  }
+}
 
 function toBusinessStartOfDay(value) {
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -254,6 +363,19 @@ async function postOrderAddHandler(request) {
         ? totalPriceFromClient
         : total;
 
+    // -------- Client context (language + geo) --------
+    // `locale` is set by BookingModal.js (orderData.locale = lang).
+    const clientLang = normalizeLocale(clientLocale);
+
+    // Determine IP and Geo via ip-api.com
+    const rawClientIp = getClientIp(request);
+    // Do not persist loopback/LAN IPs (::1, 127.0.0.1, etc.) — not a real visitor address.
+    const clientIP = isPrivateIp(rawClientIp) ? "" : rawClientIp.trim();
+    const geo = await getGeoFromIpApi(rawClientIp);
+    const clientCountry = geo.country || "";
+    const clientRegion = geo.region || "";
+    const clientCity = geo.city || "";
+
     // Create a new order document with calculated values
     const newOrder = new Order({
       carNumber: existingCar.carNumber,
@@ -271,6 +393,11 @@ async function postOrderAddHandler(request) {
       timeOut: timeOut ? timeOut : setTimeToDatejs(endDate, null),
       placeIn,
       placeOut,
+      clientLang,
+      clientIP,
+      clientCountry,
+      clientRegion,
+      clientCity: clientCity,
       // Keep creation date as a real Date object in business timezone context.
       date: dayjs().tz(BUSINESS_TZ).toDate(),
       confirmed: confirmed,

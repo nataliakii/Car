@@ -329,6 +329,27 @@ const OrderSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  // Client context captured at booking creation time
+  clientLang: {
+    type: String,
+    default: "",
+  },
+  clientIP: {
+    type: String,
+    default: "",
+  },
+  clientCountry: {
+    type: String,
+    default: "",
+  },
+  clientRegion: {
+    type: String,
+    default: "",
+  },
+  clientCity: {
+    type: String,
+    default: "",
+  },
 });
 
 // 🔧 MIGRATION SUPPORT: Sync childSeats (old) to ChildSeats (new) if needed
