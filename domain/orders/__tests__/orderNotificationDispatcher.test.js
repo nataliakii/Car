@@ -27,6 +27,10 @@ describe("orderNotificationDispatcher", () => {
     my_order: true,
     confirmed: false,
     locale: "en",
+    clientLang: "ru",
+    clientCountry: "Greece",
+    clientRegion: "Attica",
+    clientCity: "Athens",
   };
 
   const baseUser = {
@@ -76,6 +80,22 @@ describe("orderNotificationDispatcher", () => {
       "📍 Pickup: Thessaloniki Airport (SKG)"
     );
     expect(sendTelegramDirect.mock.calls[0][0]).toContain("↩️ Return: Nea Kallikratia");
+
+    // COMPANY_EMAIL: только язык + страна; SUPERADMIN: полный гео-футер в Telegram и письме
+    const companyEmail = sendEmailDirect.mock.calls[0][0];
+    expect(companyEmail.message).toContain("• Язык: ru");
+    expect(companyEmail.message).toContain("• Страна: Greece");
+    expect(companyEmail.message).not.toContain("• Регион:");
+    expect(companyEmail.message).not.toContain("• Город:");
+
+    const superadminTelegram = sendTelegramDirect.mock.calls[0][0];
+    expect(superadminTelegram).toContain("• Язык: ru");
+    expect(superadminTelegram).toContain("• Страна: Greece");
+    expect(superadminTelegram).toContain("• Регион: Attica");
+    expect(superadminTelegram).toContain("• Город: Athens");
+
+    const superadminEmail = sendEmailDirect.mock.calls[1][0];
+    expect(superadminEmail.message).toContain("• Язык: ru");
   });
 
   test("throws aggregated error when at least one channel fails, but still attempts all channels", async () => {

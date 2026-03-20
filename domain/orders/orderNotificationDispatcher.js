@@ -72,6 +72,10 @@ import { sendTelegramDirect } from "@/lib/telegram/sendDirect";
  * @property {string} [actorName] - Who performed the action
  * @property {NotificationSource} source - Where the action originated
  * @property {Date} timestamp - When the action was performed
+ * @property {string} [clientLang] - Client UI locale (stored on order)
+ * @property {string} [clientCountry] - Geo from IP (company email: страна; superadmin: полный футер)
+ * @property {string} [clientRegion] - Geo from IP (только футер SUPERADMIN)
+ * @property {string} [clientCity] - Geo from IP (только футер SUPERADMIN)
  */
 
 // ════════════════════════════════════════════════════════════════
@@ -183,6 +187,50 @@ function formatDateShort(d) {
   return athens.format("DD-MM-YY");
 }
 
+function nonEmptyString(value) {
+  if (value === null || value === undefined) return null;
+  const s = String(value).trim();
+  return s === "" ? null : s;
+}
+
+/**
+ * Хвост сообщения только для SUPERADMIN: язык и гео клиента (не для COMPANY_EMAIL / CUSTOMER).
+ * @param {NotificationPayload} payload
+ * @returns {string}
+ */
+function formatSuperadminClientContextFooter(payload) {
+  const dash = "—";
+  const lang =
+    nonEmptyString(payload.clientLang) ||
+    nonEmptyString(payload.locale) ||
+    dash;
+  const country = nonEmptyString(payload.clientCountry) || dash;
+  const region = nonEmptyString(payload.clientRegion) || dash;
+  const city = nonEmptyString(payload.clientCity) || dash;
+  return [
+    "",
+    `• Язык: ${lang}`,
+    `• Страна: ${country}`,
+    `• Регион: ${region}`,
+    `• Город: ${city}`,
+  ].join("\n");
+}
+
+/**
+ * Хвост только для письма COMPANY_EMAIL: язык и страна (без региона/города и без PII).
+ * @param {NotificationPayload} payload
+ * @returns {string}
+ */
+function formatCompanyEmailClientLocaleFooter(payload) {
+  const dash = "—";
+  const lang =
+    nonEmptyString(payload.clientLang) ||
+    nonEmptyString(payload.locale) ||
+    dash;
+  const country = nonEmptyString(payload.clientCountry) || dash;
+  return ["", `• Язык: ${lang}`, `• Страна: ${country}`].join("\n");
+}
+
 /**
  * Форматирует payload в текст для Telegram/email.
  * Для нового заказа (ORDER_CREATED) — полный блок с данными клиента.
@@ -290,7 +338,11 @@ function formatCustomerEmailContent(payload) {
  */
 async function sendTelegramNotification(target, payload, reason, priority) {
   const emoji = priority === "CRITICAL" ? "🚨" : priority === "INFO" ? "ℹ️" : "🔍";
-  const text = `${emoji} ${reason}\n\n${formatNotificationText(payload, reason)}`;
+  let body = formatNotificationText(payload, reason);
+  if (target === "SUPERADMIN") {
+    body += formatSuperadminClientContextFooter(payload);
+  }
+  const text = `${emoji} ${reason}\n\n${body}`;
   const sent = await sendTelegramDirect(text);
   if (!sent) {
     throw new Error("Telegram send failed");
@@ -341,6 +393,11 @@ async function sendEmailNotification(target, payload, reason, priority, companyE
     const emoji = priority === "CRITICAL" ? "🚨" : priority === "INFO" ? "ℹ️" : "🔍";
     title = `${emoji} ${reason}`;
     body = formatNotificationText(payload, reason);
+    if (target === "SUPERADMIN") {
+      body += formatSuperadminClientContextFooter(payload);
+    } else if (target === "COMPANY_EMAIL" && sendToCompany) {
+      body += formatCompanyEmailClientLocaleFooter(payload);
+    }
     html = renderAdminOrderNotificationEmail(title, body);
   }
 
@@ -557,6 +614,10 @@ export async function notifyOrderAction({
     locale: locale || order.locale || "en",
     oldPrice: getEffectivePrice(previousOrder),
     newPrice: getEffectivePrice(order),
+    clientLang: order.clientLang ?? "",
+    clientCountry: order.clientCountry ?? "",
+    clientRegion: order.clientRegion ?? "",
+    clientCity: order.clientCity ?? "",
   };
   
   await dispatchOrderNotifications(notifications, payload, access, companyEmail);
