@@ -114,16 +114,24 @@ async function getGeoFromIpApi(ip) {
   }
 
   try {
-    const url = `https://ip-api.com/json/${encodeURIComponent(
+    // Free ip-api.com tier is HTTP-only; HTTPS is Pro-only — using https yields empty/failed parse on hosting.
+    const url = `http://ip-api.com/json/${encodeURIComponent(
       ip
     )}?fields=status,country,regionName,city,message&lang=en`;
-    const res = await fetch(url, { method: "GET" });
+    const res = await fetch(url, { method: "GET", cache: "no-store" });
     const data = await res.json();
 
     if (!data || data.status !== "success") {
-      const empty = { country: "", region: "", city: "" };
-      IP_GEO_CACHE.set(ip, { ts: Date.now(), data: empty });
-      return empty;
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[order/add] ip-api.com geolocation failed:", {
+          ip,
+          status: data?.status,
+          message: data?.message,
+          httpStatus: res.status,
+        });
+      }
+      // Do not cache failures — avoids sticky empty geo after a bad deploy or rate limit.
+      return { country: "", region: "", city: "" };
     }
 
     const result = {
@@ -135,9 +143,10 @@ async function getGeoFromIpApi(ip) {
     IP_GEO_CACHE.set(ip, { ts: Date.now(), data: result });
     return result;
   } catch (e) {
-    const empty = { country: "", region: "", city: "" };
-    IP_GEO_CACHE.set(ip, { ts: Date.now(), data: empty });
-    return empty;
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[order/add] ip-api.com request error:", ip, e?.message || e);
+    }
+    return { country: "", region: "", city: "" };
   }
 }
 
