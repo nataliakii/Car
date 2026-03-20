@@ -219,6 +219,8 @@ function formatNotificationText(payload, reason) {
       `🚗 Car: ${carDisplay}`,
       `📅 From: ${formatDateShort(payload.rentalStartDate)}`,
       `📅 To: ${formatDateShort(payload.rentalEndDate)}`,
+      `📍 Pickup: ${payload.placeIn || "—"}`,
+      `↩️ Return: ${payload.placeOut || "—"}`,
       `🗓 Days: ${days}`,
       `💰 Total: €${payload.totalPrice ?? ""}`,
       ...(hasPII ? ["", "👤 Customer:", ...customerLines, "------------"] : []),

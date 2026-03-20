@@ -10,6 +10,7 @@ import ActionButton from "@/app/components/ui/buttons/ActionButton";
 const AUTO_MS = 6000;
 const PHONE_PORTRAIT_QUERY =
   "(max-width: 767px) and (orientation: portrait) and (pointer: coarse)";
+const COMPACT_PORTRAIT_PHONE_HERO_TOP_PADDING = "88px";
 
 // Matches Feed mainPt so hero sits under nav with no white stripe
 const HERO_TOP_PADDING = { xs: "110px", md: "90px" };
@@ -32,6 +33,8 @@ export default function SeoHeroSliderCard({
   textShadowValue = "",
   heroBenefits = [],
   hideSecondaryContentOnPortraitPhone = false,
+  raiseTitleOnPortraitPhone = false,
+  alignTitleLeftOnPortraitPhone = false,
 }) {
   const [isPortraitPhone, setIsPortraitPhone] = useState(false);
 
@@ -85,12 +88,18 @@ export default function SeoHeroSliderCard({
 
   const shouldShowBottomRightCta =
     ctaPlacement === "bottomRight" && ctaHref && ctaLabel;
-  const hasHeroBenefits = Array.isArray(heroBenefits) && heroBenefits.length > 0;
+  const hasHeroBenefits =
+    Array.isArray(heroBenefits) && heroBenefits.length > 0;
   const shouldHideSecondaryContent =
     hideSecondaryContentOnPortraitPhone && isPortraitPhone;
   const heroTextShadow = enableTextShadow
-    ? (textShadowValue || "0 1px 2px rgba(0,0,0,0.4)")
+    ? textShadowValue ||
+      "0 3px 14px rgba(0,0,0,0.65), 0 1px 3px rgba(0,0,0,0.75)"
     : "none";
+  const heroTopPadding =
+    fullBleedUnderNav && raiseTitleOnPortraitPhone && isPortraitPhone
+      ? COMPACT_PORTRAIT_PHONE_HERO_TOP_PADDING
+      : HERO_TOP_PADDING;
 
   return (
     <Box
@@ -125,15 +134,30 @@ export default function SeoHeroSliderCard({
       ))}
 
       {!disableImageOverlays && (
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0.55) 75%, rgba(0,0,0,0.7) 100%)",
-            pointerEvents: "none",
-          }}
-        />
+        <>
+          {/* Dark overlay so white text is clearly readable */}
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.55))",
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* Gradient from right for text area */}
+          <Box
+            sx={(theme) => ({
+              position: "absolute",
+              inset: 0,
+              background: `linear-gradient(270deg, 
+                ${theme.palette.common.black}CC 0%, 
+                ${theme.palette.common.black}88 40%, 
+                transparent 75%)`,
+              pointerEvents: "none",
+            })}
+          />
+        </>
       )}
 
       {/* CONTENT: CTA above title, then paragraphs (no absolute positioning) */}
@@ -143,28 +167,28 @@ export default function SeoHeroSliderCard({
           zIndex: 2,
           maxWidth: stretchContentToEdge ? "100%" : 1200,
           mx: "auto",
-          px: { xs: 2.5, sm: 3, md: 4 },
-          py: { xs: 5, md: 9 },
+          px: 3,
+          py: { xs: 6, md: 10 },
           color: "common.white",
           display: "flex",
-          justifyContent: "flex-end",
-          alignItems: "center",
-          minHeight: { xs: 380, md: 480 },
-          ...(fullBleedUnderNav && { pt: HERO_TOP_PADDING }),
+          justifyContent:
+            alignTitleLeftOnPortraitPhone && isPortraitPhone
+              ? "flex-start"
+              : "flex-end",
+          ...(fullBleedUnderNav && { pt: heroTopPadding }),
         }}
       >
         <Box
           sx={{
-            maxWidth: 580,
-            textAlign: "right",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-end",
-            gap: { xs: 1.25, md: 1.5 },
+            maxWidth: 680,
+            textAlign:
+              alignTitleLeftOnPortraitPhone && isPortraitPhone
+                ? "left"
+                : "right",
           }}
         >
           {ctaHref && ctaLabel && ctaPlacement !== "bottomRight" && (
-            <Box sx={{ mb: 0.5 }}>
+            <Box sx={{ mb: 2 }}>
               <ActionButton
                 component={Link}
                 href={ctaHref}
@@ -180,13 +204,17 @@ export default function SeoHeroSliderCard({
             component="h1"
             variant="h2"
             sx={{
-              fontWeight: 700,
-              lineHeight: 1.15,
+              fontWeight: 1000,
+              lineHeight: 1.2,
+              mb: 2,
               color: "common.white",
               textTransform: preserveTitleCase ? "none" : "uppercase",
-              letterSpacing: { xs: "0.04em", md: "0.06em" },
-              fontSize: "clamp(1.75rem, 4.5vw, 2.75rem)",
+              letterSpacing: "0.05em",
+              fontSize: "clamp(1.5rem, 4vw, 2.5rem)",
               textShadow: heroTextShadow,
+              ...(alignTitleLeftOnPortraitPhone && isPortraitPhone
+                ? { textAlign: "left", pl: 0, pr: 0 }
+                : {}),
             }}
           >
             {title}
@@ -198,12 +226,11 @@ export default function SeoHeroSliderCard({
                 key={i}
                 variant="body1"
                 sx={{
-                  opacity: 0.95,
-                  lineHeight: 1.65,
-                  maxWidth: 520,
+                  opacity: 0.92,
+                  lineHeight: 1.7,
+                  mb: 1.5,
                   color: "common.white",
                   textShadow: heroTextShadow,
-                  fontSize: { xs: "0.95rem", md: "1.05rem" },
                 }}
               >
                 {p}
@@ -213,15 +240,18 @@ export default function SeoHeroSliderCard({
           {!shouldHideSecondaryContent && hasHeroBenefits && (
             <Box
               sx={{
-                mt: { xs: 1, md: 1.5 },
-                width: { xs: "100%", md: "min(320px, 100%)" },
-                maxWidth: 320,
-                px: { xs: 1.5, md: 1.75 },
-                py: { xs: 1.25, md: 1.5 },
-                borderRadius: "12px",
-                background: "linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.35) 100%)",
-                border: "1px solid rgba(255,255,255,0.15)",
-                backdropFilter: "blur(8px)",
+                mt: { xs: 2, md: 2.5 },
+                ml: "auto",
+                width: { xs: "100%", md: "min(340px, 100%)" },
+                maxWidth: 340,
+                px: { xs: 1.35, md: 1.7 },
+                py: { xs: 1.1, md: 1.4 },
+                borderRadius: { xs: "16px", md: "18px" },
+                background:
+                  "linear-gradient(180deg, rgba(16,22,38,0.32) 0%, rgba(10,14,26,0.20) 100%)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                backdropFilter: "blur(9px)",
+                boxShadow: "0 14px 30px rgba(0,0,0,0.16)",
               }}
             >
               <Stack spacing={{ xs: 0.7, md: 0.85 }}>
@@ -249,10 +279,11 @@ export default function SeoHeroSliderCard({
                     </Typography>
                     <CheckCircleRoundedIcon
                       sx={{
-                        color: "rgba(53,199,89,0.95)",
+                        color: "#35c759",
                         fontSize: { xs: 20, md: 22 },
                         mt: "1px",
                         flexShrink: 0,
+                        filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.35))",
                       }}
                     />
                   </Box>

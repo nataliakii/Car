@@ -62,9 +62,8 @@ const LOCATION_HERO_BUTTON_SX = {
   boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
 };
 
-// Soft shadow for readability without heavy black borders
 const LOCATION_HERO_TEXT_SHADOW =
-  "0 2px 12px rgba(0,0,0,0.5), 0 1px 4px rgba(0,0,0,0.4)";
+  "0 10px 34px rgba(0,0,0,1), 0 6px 18px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 2px 2px 0 rgba(0,0,0,0.98), -2px -2px 0 rgba(0,0,0,0.72)";
 
 function getPublicCars(cars) {
   return (cars || []).filter(
@@ -298,6 +297,7 @@ export default async function LocationHierarchyPage({ params }) {
         textShadowValue={LOCATION_HERO_TEXT_SHADOW}
         heroBenefits={isAirport ? prioritySeo?.quickBenefits : []}
         hideSecondaryContentOnPortraitPhone={Boolean(heroSubtitle)}
+        alignTitleLeftOnPortraitPhone={location.id === LOCATION_IDS.THESSALONIKI}
       />
       <Box
         component="main"

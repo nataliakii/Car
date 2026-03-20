@@ -14,6 +14,8 @@ describe("orderNotificationDispatcher", () => {
     carNumber: "0052",
     regNumber: "AA-1234",
     carModel: "Toyota Yaris",
+    placeIn: "Thessaloniki Airport (SKG)",
+    placeOut: "Nea Kallikratia",
     rentalStartDate: "2026-01-14T22:00:00.000Z", // 15-01-26 Athens
     rentalEndDate: "2026-01-16T22:00:00.000Z", // 17-01-26 Athens
     timeIn: "2026-01-15T12:00:00.000Z",
@@ -67,7 +69,13 @@ describe("orderNotificationDispatcher", () => {
     expect(firstEmailCall.message).toContain("📅 From: 15-01-26");
     expect(firstEmailCall.message).toContain("📅 To: 17-01-26");
     expect(firstEmailCall.message).toContain("AA-1234");
+    expect(firstEmailCall.message).toContain("📍 Pickup: Thessaloniki Airport (SKG)");
+    expect(firstEmailCall.message).toContain("↩️ Return: Nea Kallikratia");
     expect(sendTelegramDirect.mock.calls[0][0]).toContain("AA-1234");
+    expect(sendTelegramDirect.mock.calls[0][0]).toContain(
+      "📍 Pickup: Thessaloniki Airport (SKG)"
+    );
+    expect(sendTelegramDirect.mock.calls[0][0]).toContain("↩️ Return: Nea Kallikratia");
   });
 
   test("throws aggregated error when at least one channel fails, but still attempts all channels", async () => {
