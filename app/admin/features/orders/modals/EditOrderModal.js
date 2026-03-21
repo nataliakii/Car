@@ -610,7 +610,11 @@ const EditOrderModal = ({
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data?.message || `HTTP ${response.status}`);
+        const detail =
+          data?.error && data?.message
+            ? `${data.message}: ${data.error}`
+            : data?.error || data?.message || `HTTP ${response.status}`;
+        throw new Error(detail);
       }
 
       setEditedOrder((prev) => {

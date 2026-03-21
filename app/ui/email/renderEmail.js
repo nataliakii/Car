@@ -5,20 +5,41 @@
 
 import "dayjs/locale/ru";
 import "dayjs/locale/el";
-import { getCustomerEmailStrings } from "@locales/customerEmail";
+import "dayjs/locale/de";
+import "dayjs/locale/bg";
+import "dayjs/locale/ro";
+import "dayjs/locale/sr";
+import "dayjs/locale/uk";
+import { getCustomerEmailStrings, normalizeEmailLocale } from "@locales/customerEmail";
 import { fromServerUTC, formatTimeHHMM } from "@/domain/time/athensTime";
 import { renderCustomerOrderConfirmation } from "@/app/ui/email/templates/customerOrderConfirmation";
 import { renderCustomerOfficialConfirmation } from "@/app/ui/email/templates/customerOfficialConfirmation";
 import { renderAdminOrderNotificationHtml } from "@/app/ui/email/templates/adminOrderNotification";
 import { getSecondDriverPriceLabelValue } from "@utils/secondDriverPricing";
 
-/** Дата в формате "17 Jan 2026" / "17 Янв 2026" / "17 Ιαν 2026" по локали */
+/** Дата в формате "17 Jan 2026" и т.п. по локали письма клиенту */
 function formatDateLong(d, locale) {
   if (!d) return "—";
-  const loc = locale === "ru" ? "ru" : locale === "el" ? "el" : "en";
+  const code = normalizeEmailLocale(locale);
+  const dayjsLocale =
+    code === "ru"
+      ? "ru"
+      : code === "el"
+        ? "el"
+        : code === "de"
+          ? "de"
+          : code === "bg"
+            ? "bg"
+            : code === "ro"
+              ? "ro"
+              : code === "sr"
+                ? "sr"
+                : code === "uk"
+                  ? "uk"
+                  : "en";
   const athens = fromServerUTC(d);
   if (!athens || !athens.isValid()) return "—";
-  return athens.locale(loc).format("D MMM YYYY");
+  return athens.locale(dayjsLocale).format("D MMM YYYY");
 }
 
 function formatTime(d) {
@@ -31,10 +52,6 @@ function formatTime(d) {
 function interpolatePrice(template, priceLabelValue) {
   if (!template || typeof template !== "string") return "";
   return template.replace(/{{\s*price\s*}}/g, priceLabelValue);
-}
-
-function normalizeLocale(localeInput) {
-  return localeInput === "ru" ? "ru" : localeInput === "el" ? "el" : "en";
 }
 
 function toSafeFilePart(value) {
@@ -71,8 +88,8 @@ function isKaskoInsurance(value) {
 }
 
 function buildCustomerEmailViewModel(payload) {
-  const t = getCustomerEmailStrings(payload.locale);
-  const locale = normalizeLocale(payload.locale);
+  const locale = normalizeEmailLocale(payload.locale);
+  const t = getCustomerEmailStrings(locale);
   const fromStr = formatDateLong(payload.rentalStartDate, locale);
   const toStr = formatDateLong(payload.rentalEndDate, locale);
   const carRegNumber =

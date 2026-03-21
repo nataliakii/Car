@@ -37,6 +37,7 @@ import { getTimeBucket, fromServerUTC } from "@/domain/time/athensTime";
 import { ROLE } from "./admin-rbac";
 import { DEVELOPER_EMAIL } from "@config/email";
 import { renderCustomerOrderConfirmationEmail, renderAdminOrderNotificationEmail } from "@/app/ui/email/renderEmail";
+import { pickCustomerEmailLocale } from "@locales/customerEmail";
 import { sendEmailDirect } from "@/lib/email/sendDirect";
 import { sendTelegramDirect } from "@/lib/telegram/sendDirect";
 
@@ -514,7 +515,7 @@ async function dispatchOrderNotifications(notifications, payload, access, compan
  * @param {string} [params.actorName] - Who performed the action
  * @param {NotificationSource} [params.source="UI"] - Where the action originated
  * @param {string} [params.companyEmail] - Email компании из БД (для target COMPANY_EMAIL при EMAIL_TESTING=false)
- * @param {string} [params.locale] - Язык клиента (en, ru, el) для письма клиенту
+ * @param {string} [params.locale] - Fallback языка письма клиенту, если на заказе нет clientLang/locale
  */
 export async function notifyOrderAction({
   order,
@@ -614,7 +615,7 @@ export async function notifyOrderAction({
     actorName,
     source,
     timestamp: new Date(),
-    locale: locale || order.locale || "en",
+    locale: pickCustomerEmailLocale(order, locale),
     oldPrice: getEffectivePrice(previousOrder),
     newPrice: getEffectivePrice(order),
     clientLang: order.clientLang ?? "",

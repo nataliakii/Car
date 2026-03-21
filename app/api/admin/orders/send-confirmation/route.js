@@ -7,9 +7,10 @@ import { Order } from "@models/order";
 import { Car } from "@models/car";
 import { ROLE } from "@models/user";
 import { renderCustomerOfficialConfirmationEmail } from "@/app/ui/email/renderEmail";
+import { pickCustomerEmailLocale } from "@locales/customerEmail";
 import { buildCustomerOfficialConfirmationPdf } from "@/app/ui/email/pdf/customerOfficialConfirmationPdf";
 
-const SUPPORTED_LOCALES = new Set(["en", "ru", "el", "de", "bg", "ro", "sr"]);
+const SUPPORTED_LOCALES = new Set(["en", "ru", "el", "de", "bg", "ro", "sr", "uk"]);
 const INTERNAL_PASSWORD_HEADER = "x-internal-password";
 const DEFAULT_CC_EMAIL = "admin@bbqr.site";
 const DEFAULT_MEETING_CONTACT_PHONE = "+30-697-003-47-07";
@@ -149,7 +150,7 @@ export async function POST(request) {
 
     const body = await request.json();
     const orderId = typeof body?.orderId === "string" ? body.orderId.trim() : "";
-    const locale = normalizeLocale(body?.locale);
+    const adminUiLocale = normalizeLocale(body?.locale);
 
     if (!orderId) {
       return NextResponse.json(
@@ -174,6 +175,8 @@ export async function POST(request) {
         { status: 404 }
       );
     }
+
+    const locale = pickCustomerEmailLocale(order, adminUiLocale);
 
     const customerEmail = normalizeEmail(order.email);
     if (!customerEmail) {
