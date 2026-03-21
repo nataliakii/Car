@@ -73,6 +73,7 @@ import { sendTelegramDirect } from "@/lib/telegram/sendDirect";
  * @property {NotificationSource} source - Where the action originated
  * @property {Date} timestamp - When the action was performed
  * @property {string} [clientLang] - Client UI locale (stored on order)
+ * @property {string} [clientIP] - Client IP (только футер SUPERADMIN)
  * @property {string} [clientCountry] - Geo from IP (company email: страна; superadmin: полный футер)
  * @property {string} [clientRegion] - Geo from IP (только футер SUPERADMIN)
  * @property {string} [clientCity] - Geo from IP (только футер SUPERADMIN)
@@ -194,7 +195,7 @@ function nonEmptyString(value) {
 }
 
 /**
- * Хвост сообщения только для SUPERADMIN: язык и гео клиента (не для COMPANY_EMAIL / CUSTOMER).
+ * Хвост сообщения только для SUPERADMIN: язык, IP, гео клиента (не для COMPANY_EMAIL / CUSTOMER).
  * @param {NotificationPayload} payload
  * @returns {string}
  */
@@ -204,12 +205,14 @@ function formatSuperadminClientContextFooter(payload) {
     nonEmptyString(payload.clientLang) ||
     nonEmptyString(payload.locale) ||
     dash;
+  const ip = nonEmptyString(payload.clientIP) || dash;
   const country = nonEmptyString(payload.clientCountry) || dash;
   const region = nonEmptyString(payload.clientRegion) || dash;
   const city = nonEmptyString(payload.clientCity) || dash;
   return [
     "",
     `• Язык: ${lang}`,
+    `• IP клиента: ${ip}`,
     `• Страна: ${country}`,
     `• Регион: ${region}`,
     `• Город: ${city}`,
@@ -615,6 +618,7 @@ export async function notifyOrderAction({
     oldPrice: getEffectivePrice(previousOrder),
     newPrice: getEffectivePrice(order),
     clientLang: order.clientLang ?? "",
+    clientIP: order.clientIP ?? "",
     clientCountry: order.clientCountry ?? "",
     clientRegion: order.clientRegion ?? "",
     clientCity: order.clientCity ?? "",

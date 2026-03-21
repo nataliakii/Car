@@ -261,6 +261,81 @@ const EditOrderModal = ({
     setCarOrders,
   });
 
+  /** Строка контекста суперадмина (фрагменты): жирно — код языка (2 буквы) и страна; IP только если есть. */
+  const superadminClientContextContent = useMemo(() => {
+    if (!isCurrentUserSuperAdmin) return null;
+    const rawLang = String(
+      editedOrder?.clientLang || editedOrder?.locale || ""
+    ).trim();
+    const primary =
+      rawLang.split(/[-_]/)[0]?.replace(/[^a-zA-Z]/g, "") || "";
+    const lang2 =
+      primary.length >= 2
+        ? primary.slice(0, 2).toUpperCase()
+        : "—";
+    const langBold = primary.length >= 2;
+    const ip = String(editedOrder?.clientIP || "").trim();
+    const c = String(editedOrder?.clientCountry || "").trim();
+    const r = String(editedOrder?.clientRegion || "").trim();
+    const city = String(editedOrder?.clientCity || "").trim();
+
+    let addressSegment = null;
+    if (c || r) {
+      if (c) {
+        const rest = [r, city].filter(Boolean);
+        addressSegment = (
+          <>
+            {" "}
+            {t("order.clientAddressLabel")}{" "}
+            <Box component="span" sx={{ fontWeight: 700 }}>
+              {c}
+            </Box>
+            {rest.length > 0 ? `, ${rest.join(", ")}` : ""}
+          </>
+        );
+      } else {
+        const parts = [r, city].filter(Boolean);
+        if (parts.length) {
+          addressSegment = (
+            <>
+              {" "}
+              {t("order.clientAddressLabel")} {parts.join(", ")}
+            </>
+          );
+        }
+      }
+    }
+
+    return (
+      <>
+        {t("order.clientLanguageLabel")}{" "}
+        {langBold ? (
+          <Box component="span" sx={{ fontWeight: 700 }}>
+            {lang2}
+          </Box>
+        ) : (
+          lang2
+        )}
+        {ip ? (
+          <>
+            {" "}
+            {t("order.clientIpEquals")} {ip}
+          </>
+        ) : null}
+        {addressSegment}
+      </>
+    );
+  }, [
+    isCurrentUserSuperAdmin,
+    editedOrder?.clientLang,
+    editedOrder?.locale,
+    editedOrder?.clientIP,
+    editedOrder?.clientCountry,
+    editedOrder?.clientRegion,
+    editedOrder?.clientCity,
+    t,
+  ]);
+
   // UI state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
 
@@ -2228,6 +2303,20 @@ const EditOrderModal = ({
                       />
                     </Box>
                   </Box>
+                  {isCurrentUserSuperAdmin && superadminClientContextContent ? (
+                    <Typography
+                      variant="body2"
+                      component="div"
+                      sx={{
+                        mt: 0.75,
+                        color: "text.secondary",
+                        wordBreak: "break-word",
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {superadminClientContextContent}
+                    </Typography>
+                  ) : null}
                 </Box>
               )}
 

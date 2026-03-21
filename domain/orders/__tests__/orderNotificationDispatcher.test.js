@@ -28,6 +28,7 @@ describe("orderNotificationDispatcher", () => {
     confirmed: false,
     locale: "en",
     clientLang: "ru",
+    clientIP: "203.0.113.1",
     clientCountry: "Greece",
     clientRegion: "Attica",
     clientCity: "Athens",
@@ -87,15 +88,18 @@ describe("orderNotificationDispatcher", () => {
     expect(companyEmail.message).toContain("• Страна: Greece");
     expect(companyEmail.message).not.toContain("• Регион:");
     expect(companyEmail.message).not.toContain("• Город:");
+    expect(companyEmail.message).not.toContain("• IP клиента:");
 
     const superadminTelegram = sendTelegramDirect.mock.calls[0][0];
     expect(superadminTelegram).toContain("• Язык: ru");
+    expect(superadminTelegram).toContain("• IP клиента: 203.0.113.1");
     expect(superadminTelegram).toContain("• Страна: Greece");
     expect(superadminTelegram).toContain("• Регион: Attica");
     expect(superadminTelegram).toContain("• Город: Athens");
 
     const superadminEmail = sendEmailDirect.mock.calls[1][0];
     expect(superadminEmail.message).toContain("• Язык: ru");
+    expect(superadminEmail.message).toContain("• IP клиента: 203.0.113.1");
   });
 
   test("throws aggregated error when at least one channel fails, but still attempts all channels", async () => {
