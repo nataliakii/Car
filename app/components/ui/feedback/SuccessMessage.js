@@ -108,8 +108,21 @@ const SuccessMessage = ({
           {t("bookMesssages.bookFinalize")}
         </Typography>
       )}
+      <Typography
+        variant="body1"
+        textAlign="center"
+        sx={{
+          mt: 2,
+          mb: 0.5,
+          px: { xs: 0.5, sm: 1 },
+          fontSize: { xs: "1.05rem", sm: "1.1rem" },
+          lineHeight: 1.5,
+        }}
+      >
+        {t("order.weContact")}
+      </Typography>
       {/* Добавлена кнопка OK для выхода из сообщения */}
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
         <Button
           variant="contained"
           color="error" // красный цвет по стилю MUI
